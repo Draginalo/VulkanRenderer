@@ -3,8 +3,22 @@
 # Finds vulcan header
 find_package(Vulkan REQUIRED)
 
+# Gets all header files under the directory this file is in
+file(
+	GLOB RECURSE VULKAN_RENDERER_INC CONFIGURE_DEPENDS
+	RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+	*.h *.hpp
+)
 
-add_executable (VulkanRenderer "VulkanRenderer.cpp" "VulkanRenderer.h")
+# Gets all source (cpp) files under the directory this file is in
+file(
+ GLOB_RECURSE VULKAN_RENDERER_SRC CONFIGURE_DEPENDS
+ RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+ *.c *.cpp
+)
+
+# Builds the executable with all the header and source files in this directory
+add_executable (VulkanRenderer ${VULKAN_RENDERER_SRC} ${VULKAN_RENDERER_INC})
 
 # Adds vulcan libraries
 target_link_libraries(VulkanRenderer PRIVATE Vulkan::Vulkan)
