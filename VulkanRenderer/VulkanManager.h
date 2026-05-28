@@ -44,10 +44,21 @@ private:
 	void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger,
 		const VkAllocationCallbacks* pAllocator);
 
-	VkInstance instance;
-	VkDebugUtilsMessengerEXT debugMessanger;
+	bool pickPhysicalDevice();
+	bool deviceIsSuitable(VkPhysicalDevice device);
+	bool hasSuitableDeviceQueueFamilies(VkPhysicalDevice device);
+	bool supportsDeviceExtensions(VkPhysicalDevice device);
+	bool supportsDeviceFeatures(VkPhysicalDevice device);
 
-	const std::vector<const char*> validationLayers = {
+	VkInstance mInstance;
+	VkDebugUtilsMessengerEXT mDebugMessanger;
+	VkPhysicalDevice mPhysicalDevice = VK_NULL_HANDLE;
+
+	const std::vector<const char*> mValidationLayers = {
 	"VK_LAYER_KHRONOS_validation"
+	};
+
+	std::vector<const char*> mRequiredDeviceExtension = { 
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME 
 	};
 };

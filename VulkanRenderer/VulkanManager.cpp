@@ -6,6 +6,7 @@ bool VulkanManager::initVulkan()
 
 	createInstance();
 	setUpDebugMessenger();
+	pickPhysicalDevice();
 
 	return false;
 }
@@ -14,10 +15,10 @@ bool VulkanManager::cleanupVulkan()
 {
 	if (enableValidationLayers) 
 	{
-		DestroyDebugUtilsMessengerEXT(instance, debugMessanger, nullptr);
+		DestroyDebugUtilsMessengerEXT(mInstance, mDebugMessanger, nullptr);
 	}
 
-	vkDestroyInstance(instance, nullptr);
+	vkDestroyInstance(mInstance, nullptr);
 
 	std::cout << "\nDeinitializing Vulkan" << std::endl;
 
@@ -52,8 +53,8 @@ bool VulkanManager::createInstance()
 	VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo{};
 	if (enableValidationLayers) 
 	{
-		createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-		createInfo.ppEnabledLayerNames = validationLayers.data();
+		createInfo.enabledLayerCount = static_cast<uint32_t>(mValidationLayers.size());
+		createInfo.ppEnabledLayerNames = mValidationLayers.data();
 
 		populateDebugMessangerInfo(debugMessengerInfo);
 		createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &debugMessengerInfo;
@@ -64,7 +65,7 @@ bool VulkanManager::createInstance()
 		createInfo.pNext = nullptr;
 	}
 
-	if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS)
+	if (vkCreateInstance(&createInfo, nullptr, &mInstance) != VK_SUCCESS)
 	{
 		std::cout << "ERROR: Failed to create Vulkan instance..." << std::endl;
 		return false;
@@ -81,7 +82,7 @@ bool VulkanManager::hasValidationLayerSupport()
 	std::vector<VkLayerProperties> availableLayers(layerCount);
 	vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
-	for (const char* currLayer : validationLayers)
+	for (const char* currLayer : mValidationLayers)
 	{
 		bool layerFound = false;
 
@@ -125,7 +126,7 @@ bool VulkanManager::setUpDebugMessenger()
 	VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo{};
 	populateDebugMessangerInfo(debugMessengerInfo);
 
-	if (CreateDebugUtilsMessengerEXT(instance, &debugMessengerInfo, nullptr, &debugMessanger) != VK_SUCCESS)
+	if (CreateDebugUtilsMessengerEXT(mInstance, &debugMessengerInfo, nullptr, &mDebugMessanger) != VK_SUCCESS)
 	{
 		std::cout << "Failed to set up debug messages." << std::endl;
 		return false;
@@ -170,4 +171,111 @@ void VulkanManager::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUt
 	if (func != nullptr) {
 		func(instance, debugMessenger, pAllocator);
 	}
+}
+
+bool VulkanManager::pickPhysicalDevice()
+{
+	uint32_t deviceCount = 0;
+	vkEnumeratePhysicalDevices(mInstance, &deviceCount, nullptr);
+	if (deviceCount == 0)
+	{
+		return false;
+	}
+
+	std::vector<VkPhysicalDevice> devices(deviceCount);
+	vkEnumeratePhysicalDevices(mInstance, &deviceCount, devices.data());
+
+	for (VkPhysicalDevice currDevice : devices)
+	{
+		if (deviceIsSuitable(currDevice))
+		{
+			mPhysicalDevice = currDevice;
+			return true;
+		}
+	}
+
+	std::cout << "\nFailed to find suitable physical device..." << std::endl;
+	return false;
+}
+
+bool VulkanManager::deviceIsSuitable(VkPhysicalDevice device)
+{
+	VkPhysicalDeviceProperties deviceProperties{};
+
+	vkGetPhysicalDeviceProperties(device, &deviceProperties);
+
+	return deviceProperties.apiVersion >= VK_API_VERSION_1_3 
+		&& hasSuitableDeviceQueueFamilies(device)
+		&& supportsDeviceExtensions(device)
+		&& supportsDeviceFeatures(device);
+}
+
+bool VulkanManager::hasSuitableDeviceQueueFamilies(VkPhysicalDevice device)
+{
+	uint32_t queuePropertiesCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queuePropertiesCount, nullptr);
+
+	std::vector<VkQueueFamilyProperties> queueProperties(queuePropertiesCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queuePropertiesCount, queueProperties.data());
+
+	//Checks for graphics support
+	for (VkQueueFamilyProperties queueProperty : queueProperties)
+	{
+		if (queueProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT) 
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool VulkanManager::supportsDeviceExtensions(VkPhysicalDevice device)
+{
+	uint32_t queueExtensionsCount = 0;
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &queueExtensionsCount, nullptr);
+
+	std::vector<VkExtensionProperties> queueExtensions(queueExtensionsCount);
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &queueExtensionsCount, queueExtensions.data());
+
+	//Checks for extension support
+	for (const char* requiredExtension : mRequiredDeviceExtension)
+	{
+		bool supportsCurrExtension = false;
+		for (const VkExtensionProperties& queueExtension : queueExtensions)
+		{
+			if (strcmp(requiredExtension, queueExtension.extensionName))
+			{
+				supportsCurrExtension = true;
+				break;
+			}
+		}
+
+		if (!supportsCurrExtension)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool VulkanManager::supportsDeviceFeatures(VkPhysicalDevice device)
+{
+	//Checks for feature support
+	VkPhysicalDeviceFeatures2 deviceFeatures{};
+	VkPhysicalDeviceVulkan13Features deviceVulkan13Features{};
+	VkPhysicalDeviceExtendedDynamicStateFeaturesEXT deviceExtendedStateFeatures{};
+
+	deviceExtendedStateFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
+
+	deviceVulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+	deviceVulkan13Features.pNext = (VkPhysicalDeviceDynamicRenderingFeatures*)&deviceExtendedStateFeatures;
+
+	deviceFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+	deviceFeatures.pNext = (VkPhysicalDeviceVulkan13Features*)&deviceVulkan13Features;
+
+	vkGetPhysicalDeviceFeatures2(device, &deviceFeatures);
+
+	return deviceVulkan13Features.dynamicRendering && deviceExtendedStateFeatures.extendedDynamicState;
 }
