@@ -46,13 +46,17 @@ private:
 
 	bool pickPhysicalDevice();
 	bool deviceIsSuitable(VkPhysicalDevice device);
-	bool hasSuitableDeviceQueueFamilies(VkPhysicalDevice device);
+	int findSuitableQueueFamilies(VkPhysicalDevice device);
 	bool supportsDeviceExtensions(VkPhysicalDevice device);
 	bool supportsDeviceFeatures(VkPhysicalDevice device);
+
+	bool createLogicalDevice();
 
 	VkInstance mInstance;
 	VkDebugUtilsMessengerEXT mDebugMessanger;
 	VkPhysicalDevice mPhysicalDevice = VK_NULL_HANDLE;
+	VkDevice mLogicalDevice;
+	VkQueue mGraphicsQueue;
 
 	const std::vector<const char*> mValidationLayers = {
 	"VK_LAYER_KHRONOS_validation"

@@ -7,12 +7,15 @@ bool VulkanManager::initVulkan()
 	createInstance();
 	setUpDebugMessenger();
 	pickPhysicalDevice();
+	createLogicalDevice();
 
 	return false;
 }
 
 bool VulkanManager::cleanupVulkan()
 {
+	vkDestroyDevice(mLogicalDevice, nullptr);
+
 	if (enableValidationLayers) 
 	{
 		DestroyDebugUtilsMessengerEXT(mInstance, mDebugMessanger, nullptr);
@@ -205,12 +208,12 @@ bool VulkanManager::deviceIsSuitable(VkPhysicalDevice device)
 	vkGetPhysicalDeviceProperties(device, &deviceProperties);
 
 	return deviceProperties.apiVersion >= VK_API_VERSION_1_3 
-		&& hasSuitableDeviceQueueFamilies(device)
+		&& findSuitableQueueFamilies(device) != -1
 		&& supportsDeviceExtensions(device)
 		&& supportsDeviceFeatures(device);
 }
 
-bool VulkanManager::hasSuitableDeviceQueueFamilies(VkPhysicalDevice device)
+int VulkanManager::findSuitableQueueFamilies(VkPhysicalDevice device)
 {
 	uint32_t queuePropertiesCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queuePropertiesCount, nullptr);
@@ -218,16 +221,19 @@ bool VulkanManager::hasSuitableDeviceQueueFamilies(VkPhysicalDevice device)
 	std::vector<VkQueueFamilyProperties> queueProperties(queuePropertiesCount);
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queuePropertiesCount, queueProperties.data());
 
+	int i = 0;
 	//Checks for graphics support
 	for (VkQueueFamilyProperties queueProperty : queueProperties)
 	{
 		if (queueProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT) 
 		{
-			return true;
+			return i;
 		}
+
+		i++;
 	}
 
-	return false;
+	return -1;
 }
 
 bool VulkanManager::supportsDeviceExtensions(VkPhysicalDevice device)
@@ -278,4 +284,62 @@ bool VulkanManager::supportsDeviceFeatures(VkPhysicalDevice device)
 	vkGetPhysicalDeviceFeatures2(device, &deviceFeatures);
 
 	return deviceVulkan13Features.dynamicRendering && deviceExtendedStateFeatures.extendedDynamicState;
+}
+
+bool VulkanManager::createLogicalDevice()
+{
+	//Can replace this with the previously found queue index when dtermining queue family suitability
+	uint32_t queueFamilyIndex = static_cast<uint32_t>(findSuitableQueueFamilies(mPhysicalDevice));
+	float queuePriority = 1.0;
+
+	VkDeviceQueueCreateInfo deviceQueueCreateInfo{};
+	deviceQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	deviceQueueCreateInfo.queueFamilyIndex = queueFamilyIndex;
+	deviceQueueCreateInfo.queueCount = 1;
+	deviceQueueCreateInfo.pQueuePriorities = &queuePriority;
+
+	VkPhysicalDeviceFeatures deviceBaseFeatures{};
+
+	VkPhysicalDeviceFeatures2 deviceAdditFeatures{};
+	VkPhysicalDeviceVulkan13Features deviceVulkan13Features{};
+	VkPhysicalDeviceExtendedDynamicStateFeaturesEXT deviceExtendedStateFeatures{};
+
+	deviceExtendedStateFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
+
+	deviceVulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+	deviceVulkan13Features.pNext = (VkPhysicalDeviceDynamicRenderingFeatures*)&deviceExtendedStateFeatures;
+
+	deviceAdditFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+	deviceAdditFeatures.pNext = (VkPhysicalDeviceVulkan13Features*)&deviceVulkan13Features;
+
+	VkDeviceCreateInfo deviceCreateInfo{};
+	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	deviceCreateInfo.pQueueCreateInfos = &deviceQueueCreateInfo;
+	deviceCreateInfo.queueCreateInfoCount = 1;
+	//deviceCreateInfo.pEnabledFeatures = &deviceBaseFeatures; //This is null because we ask for additional features in pNext
+	deviceCreateInfo.pNext = (VkPhysicalDeviceFeatures2*)&deviceAdditFeatures;
+	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(mRequiredDeviceExtension.size());
+	deviceCreateInfo.ppEnabledExtensionNames = mRequiredDeviceExtension.data();
+
+	////Device Layers have never worked since Vulkan 1.0 and only Instance Layers should be used instead: 
+	// https://docs.vulkan.org/spec/latest/appendices/legacy.html#legacy-devicelayers
+	/*if (enableValidationLayers)
+	{
+		deviceCreateInfo.enabledLayerCount = static_cast<uint32_t>(mValidationLayers.size());
+		deviceCreateInfo.ppEnabledLayerNames = mValidationLayers.data();
+	}
+	else*/
+	{
+		deviceCreateInfo.enabledLayerCount = 0;
+	}
+
+	if (vkCreateDevice(mPhysicalDevice, &deviceCreateInfo, nullptr, &mLogicalDevice) != VK_SUCCESS)
+	{
+		std::cout << "\nFailed to create logical device..." << std::endl;
+		return false;
+	}
+
+	vkGetDeviceQueue(mLogicalDevice, queueFamilyIndex, 0, &mGraphicsQueue);
+
+	return true;
 }
