@@ -15,6 +15,8 @@ public:
 	void pollWindowEvents();
 
 	bool shouldCloseWindow();
+
+	inline GLFWwindow* getWindowRef() { return window; };
 private:
 	GLFWwindow* window;
 };

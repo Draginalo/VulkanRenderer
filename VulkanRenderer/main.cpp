@@ -9,7 +9,7 @@ int main() {
 
     //Initializes window and vulkan
     windowManager.initWindow();
-    vulkanManager.initVulkan();
+    vulkanManager.initVulkan(windowManager.getWindowRef());
 
     while (!windowManager.shouldCloseWindow()) {
         windowManager.pollWindowEvents();

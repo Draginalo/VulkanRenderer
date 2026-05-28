@@ -1,11 +1,12 @@
 ﻿#include "VulkanManager.h"
 
-bool VulkanManager::initVulkan()
+bool VulkanManager::initVulkan(GLFWwindow* window)
 {
 	std::cout << "\nInitializing Vulkan" << std::endl;
 
 	createInstance();
 	setUpDebugMessenger();
+	createSurface(window);
 	pickPhysicalDevice();
 	createLogicalDevice();
 
@@ -21,6 +22,7 @@ bool VulkanManager::cleanupVulkan()
 		DestroyDebugUtilsMessengerEXT(mInstance, mDebugMessanger, nullptr);
 	}
 
+	vkDestroySurfaceKHR(mInstance, mSurface, nullptr);
 	vkDestroyInstance(mInstance, nullptr);
 
 	std::cout << "\nDeinitializing Vulkan" << std::endl;
@@ -208,13 +210,17 @@ bool VulkanManager::deviceIsSuitable(VkPhysicalDevice device)
 	vkGetPhysicalDeviceProperties(device, &deviceProperties);
 
 	return deviceProperties.apiVersion >= VK_API_VERSION_1_3 
-		&& findSuitableQueueFamilies(device) != -1
+		&& findSuitableQueueFamilies(device).containsAllFamilies()
 		&& supportsDeviceExtensions(device)
 		&& supportsDeviceFeatures(device);
 }
 
-int VulkanManager::findSuitableQueueFamilies(VkPhysicalDevice device)
+QueueFamiliesIndexStore VulkanManager::findSuitableQueueFamilies(VkPhysicalDevice device)
 {
+	QueueFamiliesIndexStore queueIndexInfo{};
+	queueIndexInfo.graphicsFamalyIndex = -1;
+	queueIndexInfo.presentFamalyIndex = -1;
+
 	uint32_t queuePropertiesCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queuePropertiesCount, nullptr);
 
@@ -227,13 +233,26 @@ int VulkanManager::findSuitableQueueFamilies(VkPhysicalDevice device)
 	{
 		if (queueProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT) 
 		{
-			return i;
+			queueIndexInfo.graphicsFamalyIndex = i;
+		}
+
+		VkBool32 presentSupported = VK_FALSE;
+		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, mSurface, &presentSupported);
+
+		if (presentSupported)
+		{
+			queueIndexInfo.presentFamalyIndex = i;
+		}
+
+		if (queueIndexInfo.containsAllFamilies())
+		{
+			break;
 		}
 
 		i++;
 	}
 
-	return -1;
+	return queueIndexInfo;
 }
 
 bool VulkanManager::supportsDeviceExtensions(VkPhysicalDevice device)
@@ -288,15 +307,22 @@ bool VulkanManager::supportsDeviceFeatures(VkPhysicalDevice device)
 
 bool VulkanManager::createLogicalDevice()
 {
-	//Can replace this with the previously found queue index when dtermining queue family suitability
-	uint32_t queueFamilyIndex = static_cast<uint32_t>(findSuitableQueueFamilies(mPhysicalDevice));
+	//Can replace this with the previously found queue index info when determining queue family suitability
+	QueueFamiliesIndexStore queueFamilyIndeciesInfo = findSuitableQueueFamilies(mPhysicalDevice);
+	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+	std::set<uint32_t> queueFamilyIndecies = queueFamilyIndeciesInfo.getVectorOfIndecies();
+
 	float queuePriority = 1.0;
 
-	VkDeviceQueueCreateInfo deviceQueueCreateInfo{};
-	deviceQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	deviceQueueCreateInfo.queueFamilyIndex = queueFamilyIndex;
-	deviceQueueCreateInfo.queueCount = 1;
-	deviceQueueCreateInfo.pQueuePriorities = &queuePriority;
+	for (uint32_t queueIndex : queueFamilyIndecies)
+	{
+		VkDeviceQueueCreateInfo deviceQueueCreateInfo{};
+		deviceQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		deviceQueueCreateInfo.queueFamilyIndex = queueIndex;
+		deviceQueueCreateInfo.queueCount = 1;
+		deviceQueueCreateInfo.pQueuePriorities = &queuePriority;
+		queueCreateInfos.push_back(deviceQueueCreateInfo);
+	}
 
 	VkPhysicalDeviceFeatures deviceBaseFeatures{};
 
@@ -314,8 +340,8 @@ bool VulkanManager::createLogicalDevice()
 
 	VkDeviceCreateInfo deviceCreateInfo{};
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	deviceCreateInfo.pQueueCreateInfos = &deviceQueueCreateInfo;
 	deviceCreateInfo.queueCreateInfoCount = 1;
+	deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
 	//deviceCreateInfo.pEnabledFeatures = &deviceBaseFeatures; //This is null because we ask for additional features in pNext
 	deviceCreateInfo.pNext = (VkPhysicalDeviceFeatures2*)&deviceAdditFeatures;
 	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(mRequiredDeviceExtension.size());
@@ -339,7 +365,19 @@ bool VulkanManager::createLogicalDevice()
 		return false;
 	}
 
-	vkGetDeviceQueue(mLogicalDevice, queueFamilyIndex, 0, &mGraphicsQueue);
+	vkGetDeviceQueue(mLogicalDevice, queueFamilyIndeciesInfo.graphicsFamalyIndex, 0, &mGraphicsQueue);
+	vkGetDeviceQueue(mLogicalDevice, queueFamilyIndeciesInfo.presentFamalyIndex, 0, &mPresentQueue);
+
+	return true;
+}
+
+bool VulkanManager::createSurface(GLFWwindow* window)
+{
+	if (glfwCreateWindowSurface(mInstance, window, nullptr, &mSurface) != VK_SUCCESS)
+	{
+		std::cout << "\nFailed to create window surface..." << std::endl;
+		return false;
+	}
 
 	return true;
 }

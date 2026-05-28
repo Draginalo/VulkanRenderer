@@ -11,6 +11,7 @@
 
 #include <iostream>
 #include <vector>
+#include <set>
 
 #ifdef NDEBUG
 	const bool enableValidationLayers = false;
@@ -28,9 +29,27 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 	return VK_FALSE;
 }
 
+struct QueueFamiliesIndexStore {
+	int graphicsFamalyIndex = -1;
+	int presentFamalyIndex = -1;
+
+	bool containsAllFamilies()
+	{
+		return graphicsFamalyIndex != -1 && presentFamalyIndex != -1;
+	}
+
+	std::set<uint32_t> getVectorOfIndecies()
+	{
+		return std::set<uint32_t> {
+			static_cast<uint32_t>(graphicsFamalyIndex),
+			static_cast<uint32_t>(presentFamalyIndex)
+		};
+	}
+};
+
 class VulkanManager {
 public:
-	bool initVulkan();
+	bool initVulkan(GLFWwindow* window);
 	bool cleanupVulkan();
 private:
 	bool createInstance();
@@ -46,17 +65,23 @@ private:
 
 	bool pickPhysicalDevice();
 	bool deviceIsSuitable(VkPhysicalDevice device);
-	int findSuitableQueueFamilies(VkPhysicalDevice device);
+	QueueFamiliesIndexStore findSuitableQueueFamilies(VkPhysicalDevice device);
 	bool supportsDeviceExtensions(VkPhysicalDevice device);
 	bool supportsDeviceFeatures(VkPhysicalDevice device);
 
 	bool createLogicalDevice();
 
+	bool createSurface(GLFWwindow* window);
+
 	VkInstance mInstance;
 	VkDebugUtilsMessengerEXT mDebugMessanger;
 	VkPhysicalDevice mPhysicalDevice = VK_NULL_HANDLE;
 	VkDevice mLogicalDevice;
+
 	VkQueue mGraphicsQueue;
+	VkQueue mPresentQueue;
+
+	VkSurfaceKHR mSurface;
 
 	const std::vector<const char*> mValidationLayers = {
 	"VK_LAYER_KHRONOS_validation"
