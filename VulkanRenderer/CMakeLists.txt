@@ -17,11 +17,16 @@ file(
  *.c *.cpp
 )
 
+include(${CMAKE_CURRENT_LIST_DIR}/../externals/compileBytecodeShaders.cmake)
+
 # Builds the executable with all the header and source files in this directory
 add_executable (VulkanRenderer ${VULKAN_RENDERER_SRC} ${VULKAN_RENDERER_INC})
 
 # Adds vulcan libraries
 target_link_libraries(VulkanRenderer PRIVATE Vulkan::Vulkan)
 
-# Adds glm libraries
+# Adds glm and glfw libraries
 target_link_libraries(VulkanRenderer PUBLIC glfw glm)
+
+#Adds the compiled shaders as a dependency (generates the encoded shaders at build time)
+add_dependencies(VulkanRenderer COMPILED_SHADERS)

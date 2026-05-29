@@ -87,6 +87,10 @@ private:
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, GLFWwindow* window);
 	bool createSwapChain(GLFWwindow* window);
 
+	bool createImageViews();
+
+	bool createGraphicsPipeline();
+
 	VkInstance mInstance;
 	VkDebugUtilsMessengerEXT mDebugMessanger;
 	VkPhysicalDevice mPhysicalDevice = VK_NULL_HANDLE;
@@ -98,6 +102,7 @@ private:
 	VkSurfaceKHR mSurface;
 	VkSwapchainKHR mSwapChain;
 	std::vector<VkImage> mSwapChainImages;
+	std::vector<VkImageView> mSwapChainImageViews;
 	VkFormat mSwapChainImageFormat;
 	VkExtent2D mSwapChainImageExtent;
 
