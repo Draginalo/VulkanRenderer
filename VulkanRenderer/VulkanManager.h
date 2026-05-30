@@ -14,6 +14,8 @@
 #include <set>
 #include <algorithm>
 
+#include "ShaderManager.h"
+
 #ifdef NDEBUG
 	const bool enableValidationLayers = false;
 #else 
@@ -90,6 +92,7 @@ private:
 	bool createImageViews();
 
 	bool createGraphicsPipeline();
+	bool createRenderPass();
 
 	VkInstance mInstance;
 	VkDebugUtilsMessengerEXT mDebugMessanger;
@@ -106,11 +109,17 @@ private:
 	VkFormat mSwapChainImageFormat;
 	VkExtent2D mSwapChainImageExtent;
 
+	ShaderManager mShaderManager;
+	VkPipelineLayout mPipelineLayout;
+	VkRenderPass mRenderPass;
+	VkPipeline mGraphicsPipeline;
+
 	const std::vector<const char*> mValidationLayers = {
 		"VK_LAYER_KHRONOS_validation"
 	};
 
 	std::vector<const char*> mRequiredDeviceExtension = { 
-		VK_KHR_SWAPCHAIN_EXTENSION_NAME 
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+		VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME
 	};
 };
