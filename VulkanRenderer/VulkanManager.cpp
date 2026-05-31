@@ -11,6 +11,8 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	createLogicalDevice();
 	createSwapChain(window);
 	createImageViews();
+	createCommandPool();
+	createCommandBuffer();
 
 	mGraphicsPipeline.createRenderPass(mLogicalDevice, mSwapChainImageFormat);
 	mGraphicsPipeline.createGraphicsPipeline(mLogicalDevice, mSwapChainImageExtent);
@@ -20,6 +22,7 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 
 bool VulkanManager::cleanupVulkan()
 {
+	vkDestroyCommandPool(mLogicalDevice, mCommandPool, nullptr);
 	mGraphicsPipeline.cleanupPipeline(mLogicalDevice);
 
 	for (VkImageView imageView : mSwapChainImageViews)
@@ -561,6 +564,89 @@ bool VulkanManager::createImageViews()
 			std::cout << "\nFailed to create image view..." << std::endl;
 			return false;
 		}
+	}
+
+	return true;
+}
+
+bool VulkanManager::createCommandPool()
+{
+	QueueFamiliesIndexStore queueFamilies = findSuitableQueueFamilies(mPhysicalDevice);
+
+	VkCommandPoolCreateInfo poolCreateInfo{};
+	poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	poolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	poolCreateInfo.queueFamilyIndex = queueFamilies.graphicsFamalyIndex;
+
+	if (vkCreateCommandPool(mLogicalDevice, &poolCreateInfo, nullptr, &mCommandPool) != VK_SUCCESS)
+	{
+		std::cout << "\nFailed to create command pool..." << std::endl;
+		return false;
+	}
+
+	return true;
+}
+
+bool VulkanManager::createCommandBuffer()
+{
+	VkCommandBufferAllocateInfo commandBufAllocateInfo{};
+	commandBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	commandBufAllocateInfo.commandPool = mCommandPool;
+	commandBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	commandBufAllocateInfo.commandBufferCount = 1;
+
+	if (vkAllocateCommandBuffers(mLogicalDevice, &commandBufAllocateInfo, &mCommandBuffer) != VK_SUCCESS)
+	{
+		std::cout << "\nFailed to allocate command buffer..." << std::endl;
+		return false;
+	}
+
+	return true;
+}
+
+bool VulkanManager::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+{
+	VkCommandBufferBeginInfo beginCommandBuffInfo{};
+	beginCommandBuffInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginCommandBuffInfo.flags = 0;
+	beginCommandBuffInfo.pInheritanceInfo = nullptr;
+
+	if (vkBeginCommandBuffer(mCommandBuffer, &beginCommandBuffInfo) != VK_SUCCESS)
+	{
+		std::cout << "\nFailed to begin recording command buffer..." << std::endl;
+		return false;
+	}
+
+	VkRenderPassBeginInfo renderPassBeginInfo = mGraphicsPipeline.getRenderPassBeginInfo(imageIndex, mSwapChainImageExtent);
+
+	vkCmdBeginRenderPass(mCommandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+	vkCmdBindPipeline(mCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mGraphicsPipeline.getPipeline());
+
+	VkViewport viewport{};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = static_cast<float>(mSwapChainImageExtent.width);
+	viewport.height = static_cast<float>(mSwapChainImageExtent.height);
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	vkCmdSetViewport(mCommandBuffer, 0, 1, &viewport);
+
+	VkRect2D scissor{};
+	scissor.offset = { 0, 0 };
+	scissor.extent = mSwapChainImageExtent;
+
+	vkCmdSetScissor(mCommandBuffer, 0, 1, &scissor);
+
+	vkCmdDraw(mCommandBuffer, 3, 1, 0, 0);
+
+	vkCmdEndRenderPass(mCommandBuffer);
+
+	if (vkEndCommandBuffer(mCommandBuffer) != VK_SUCCESS)
+	{
+		std::cout << "\nFailed to end command buffer recording..." << std::endl;
+		return false;
 	}
 
 	return true;

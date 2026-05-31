@@ -220,6 +220,7 @@ bool GraphicsPipeline::createRenderPass(VkDevice logicalDevice, VkFormat colorAt
 
 	if (vkCreateRenderPass(logicalDevice, &renderPassCreateInfo, nullptr, &mRenderPass) != VK_SUCCESS)
 	{
+		std::cout << "\nFailed to create render pass..." << std::endl;
 		return false;
 	}
 
@@ -228,7 +229,55 @@ bool GraphicsPipeline::createRenderPass(VkDevice logicalDevice, VkFormat colorAt
 
 void GraphicsPipeline::cleanupPipeline(VkDevice logicalDevice)
 {
+	for (VkFramebuffer framebuffer : mFramebuffers)
+	{
+		vkDestroyFramebuffer(logicalDevice, framebuffer, nullptr);
+	}
+
 	vkDestroyPipeline(logicalDevice, mGraphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(logicalDevice, mPipelineLayout, nullptr);
 	vkDestroyRenderPass(logicalDevice, mRenderPass, nullptr);
+}
+
+bool GraphicsPipeline::createFramebuffers(VkDevice logicalDevice, std::vector<VkImageView> imageViews, VkExtent2D extent)
+{
+	int imageViewCount = imageViews.size();
+
+	mFramebuffers.resize(imageViewCount);
+
+	for (int i = 0; i < imageViewCount; i++)
+	{
+		VkFramebufferCreateInfo framebufferInfo{};
+		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferInfo.renderPass = mRenderPass;
+		framebufferInfo.attachmentCount = 1;
+		framebufferInfo.pAttachments = &imageViews[i];
+		framebufferInfo.width = extent.width;
+		framebufferInfo.height = extent.height;
+		framebufferInfo.layers = 1;
+
+		if (vkCreateFramebuffer(logicalDevice, &framebufferInfo, nullptr, &mFramebuffers[i]) != VK_SUCCESS)
+		{
+			std::cout << "\nFailed to create framebuffer..." << std::endl;
+			return false;
+		}
+	}
+
+	return true;
+}
+
+VkRenderPassBeginInfo GraphicsPipeline::getRenderPassBeginInfo(uint32_t framebufferIndex, VkExtent2D renderPassExtent)
+{
+	VkRenderPassBeginInfo renderPassBeginInfo{};
+	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassBeginInfo.renderPass = mRenderPass;
+	renderPassBeginInfo.framebuffer = mFramebuffers[framebufferIndex];
+	renderPassBeginInfo.renderArea.offset = { 0, 0 };
+	renderPassBeginInfo.renderArea.extent = renderPassExtent;
+
+	VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
+	renderPassBeginInfo.clearValueCount = 1;
+	renderPassBeginInfo.pClearValues = &clearColor;
+
+	return renderPassBeginInfo;
 }

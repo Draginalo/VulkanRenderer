@@ -91,6 +91,10 @@ private:
 
 	bool createImageViews();
 
+	bool createCommandPool();
+	bool createCommandBuffer();
+	bool recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+
 	VkInstance mInstance;
 	VkDebugUtilsMessengerEXT mDebugMessanger;
 	VkPhysicalDevice mPhysicalDevice = VK_NULL_HANDLE;
@@ -107,6 +111,9 @@ private:
 	VkExtent2D mSwapChainImageExtent;
 
 	GraphicsPipeline mGraphicsPipeline;
+
+	VkCommandPool mCommandPool;
+	VkCommandBuffer mCommandBuffer;
 
 	const std::vector<const char*> mValidationLayers = {
 		"VK_LAYER_KHRONOS_validation"
