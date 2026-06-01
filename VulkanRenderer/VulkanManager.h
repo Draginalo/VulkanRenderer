@@ -61,6 +61,7 @@ class VulkanManager {
 public:
 	bool initVulkan(GLFWwindow* window);
 	bool cleanupVulkan();
+	bool drawFrame();
 private:
 	bool createInstance();
 	bool hasValidationLayerSupport();
@@ -92,8 +93,10 @@ private:
 	bool createImageViews();
 
 	bool createCommandPool();
-	bool createCommandBuffer();
+	bool createCommandBuffers();
 	bool recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+
+	bool createSyncObjects();
 
 	VkInstance mInstance;
 	VkDebugUtilsMessengerEXT mDebugMessanger;
@@ -113,7 +116,14 @@ private:
 	GraphicsPipeline mGraphicsPipeline;
 
 	VkCommandPool mCommandPool;
-	VkCommandBuffer mCommandBuffer;
+	std::vector<VkCommandBuffer> mCommandBuffers;
+
+	std::vector<VkSemaphore> mImageAvailableSemaphores;
+	std::vector<VkSemaphore> mRenderFinishedSemaphores;
+	std::vector<VkFence> mWhileRenderingFences;
+
+	const int MAX_FRAMES_BEING_PROCESSED = 2;
+	uint32_t currentFrame = 0;
 
 	const std::vector<const char*> mValidationLayers = {
 		"VK_LAYER_KHRONOS_validation"

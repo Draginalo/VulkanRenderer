@@ -13,6 +13,7 @@ int main() {
 
     while (!windowManager.shouldCloseWindow()) {
         windowManager.pollWindowEvents();
+        vulkanManager.drawFrame();
     }
 
     vulkanManager.cleanupVulkan();
