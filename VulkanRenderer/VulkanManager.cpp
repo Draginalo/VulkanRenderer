@@ -23,6 +23,7 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	createCommandPool();
 	createCommandBuffers();
 	createSyncObjects();
+	registerExtensionFunctions(mInstance);
 
 	return false;
 }
@@ -274,24 +275,11 @@ void VulkanManager::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUt
 	}
 }
 
-void VulkanManager::CmdBeginRenderingKHR(VkInstance instance, VkCommandBuffer commandBuffer, const VkRenderingInfo* pRenderingInfo)
+void VulkanManager::registerExtensionFunctions(VkInstance instance)
 {
-	void (*func)(VkCommandBuffer, const VkRenderingInfo*) =
-		(PFN_vkCmdBeginRenderingKHR)vkGetInstanceProcAddr(instance, "vkCmdBeginRenderingKHR");
-
-	if (func != nullptr) {
-		func(commandBuffer, pRenderingInfo);
-	}
-}
-
-void VulkanManager::CmdEndRenderingKHR(VkInstance instance, VkCommandBuffer commandBuffer)
-{
-	void (*func)(VkCommandBuffer) =
-		(PFN_vkCmdEndRenderingKHR)vkGetInstanceProcAddr(instance, "vkCmdEndRenderingKHR");
-
-	if (func != nullptr) {
-		func(commandBuffer);
-	}
+	fpCmdBeginRenderingKHR = (PFN_vkCmdBeginRenderingKHR)vkGetInstanceProcAddr(instance, "vkCmdBeginRenderingKHR");
+	fpCmdEndRenderingKHR = (PFN_vkCmdEndRenderingKHR)vkGetInstanceProcAddr(instance, "vkCmdEndRenderingKHR");
+	fpCmdPipelineBarrier2 = (PFN_vkCmdPipelineBarrier2KHR)vkGetInstanceProcAddr(instance, "vkCmdPipelineBarrier2KHR");
 }
 
 bool VulkanManager::pickPhysicalDevice()
@@ -411,13 +399,14 @@ bool VulkanManager::supportsDeviceFeatures(VkPhysicalDevice device)
 	deviceVulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 	deviceVulkan13Features.pNext = (VkPhysicalDeviceDynamicRenderingFeatures*)&deviceExtendedStateFeatures;
 	deviceVulkan13Features.dynamicRendering = VK_TRUE;
+	deviceVulkan13Features.synchronization2 = VK_TRUE;
 
 	deviceFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 	deviceFeatures.pNext = (VkPhysicalDeviceVulkan13Features*)&deviceVulkan13Features;
 
 	vkGetPhysicalDeviceFeatures2(device, &deviceFeatures);
 
-	return deviceVulkan13Features.dynamicRendering && deviceExtendedStateFeatures.extendedDynamicState;
+	return deviceVulkan13Features.synchronization2 && deviceVulkan13Features.dynamicRendering && deviceExtendedStateFeatures.extendedDynamicState;
 }
 
 bool VulkanManager::createLogicalDevice()
@@ -450,7 +439,8 @@ bool VulkanManager::createLogicalDevice()
 
 	deviceVulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 	deviceVulkan13Features.pNext = (VkPhysicalDeviceDynamicRenderingFeatures*)&deviceExtendedStateFeatures;
-	deviceVulkan13Features.dynamicRendering = true;
+	deviceVulkan13Features.dynamicRendering = VK_TRUE;
+	deviceVulkan13Features.synchronization2 = VK_TRUE;
 
 	deviceAdditFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 	deviceAdditFeatures.pNext = (VkPhysicalDeviceVulkan13Features*)&deviceVulkan13Features;
@@ -769,6 +759,10 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 		return false;
 	}
 
+	transitionImageLayout(commandBuffer, imageIndex, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		VK_ACCESS_2_NONE, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_2_NONE,
+		VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT);
+
 	VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
 	VkRenderingAttachmentInfoKHR colorAttachmentInfo{};
 	colorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
@@ -788,7 +782,7 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 	renderingInfo.layerCount = 1;
 	renderingInfo.pDepthAttachment = VK_NULL_HANDLE;
 
-	CmdBeginRenderingKHR(mInstance, commandBuffer, &renderingInfo);
+	fpCmdBeginRenderingKHR(commandBuffer, &renderingInfo);
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mGraphicsPipeline.getPipeline());
 
@@ -810,11 +804,11 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 
 	vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 
-	CmdEndRenderingKHR(mInstance, commandBuffer);
+	fpCmdEndRenderingKHR(commandBuffer);
 
-	VkDependencyInfo dependencyInfo{};
-
-	vkCmdPipelineBarrier2(commandBuffer, &dependencyInfo);
+	transitionImageLayout(commandBuffer, imageIndex, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+		VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_2_NONE, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+		VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
 
 	if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
 	{
@@ -823,6 +817,39 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 	}
 
 	return false;
+}
+
+void VulkanManager::transitionImageLayout(VkCommandBuffer commandBuffer, uint32_t imageIndex, VkImageLayout oldLayout, VkImageLayout newLayout,
+	VkAccessFlags2 srcAccessMask, VkAccessFlags2 dstAccessMask, VkPipelineStageFlags2 srcStageMask, 
+	VkPipelineStageFlags2 dstStageMask)
+{
+	VkImageSubresourceRange subResourceRange{};
+	subResourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	subResourceRange.baseMipLevel = 0;
+	subResourceRange.levelCount = 1;
+	subResourceRange.baseArrayLayer = 0;
+	subResourceRange.layerCount = 1;
+
+	VkImageMemoryBarrier2 imageMemoryBarrierInfo{};
+	imageMemoryBarrierInfo.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+	imageMemoryBarrierInfo.image = mSwapChainImages[imageIndex];
+	imageMemoryBarrierInfo.oldLayout = oldLayout;
+	imageMemoryBarrierInfo.newLayout = newLayout;
+	imageMemoryBarrierInfo.srcAccessMask = srcAccessMask;
+	imageMemoryBarrierInfo.dstAccessMask = dstAccessMask;
+	imageMemoryBarrierInfo.srcStageMask = srcStageMask;
+	imageMemoryBarrierInfo.dstStageMask = dstStageMask;
+	imageMemoryBarrierInfo.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	imageMemoryBarrierInfo.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	imageMemoryBarrierInfo.subresourceRange = subResourceRange;
+
+	VkDependencyInfo dependencyInfo{};
+	dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+	dependencyInfo.imageMemoryBarrierCount = 1;
+	dependencyInfo.dependencyFlags = 0;
+	dependencyInfo.pImageMemoryBarriers = &imageMemoryBarrierInfo;
+
+	fpCmdPipelineBarrier2(commandBuffer, &dependencyInfo);
 }
 
 bool VulkanManager::createSyncObjects()

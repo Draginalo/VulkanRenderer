@@ -73,8 +73,7 @@ private:
 		const VkAllocationCallbacks* pAlloator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 	void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger,
 		const VkAllocationCallbacks* pAllocator);
-	void CmdBeginRenderingKHR(VkInstance instance, VkCommandBuffer commandBuffer, const VkRenderingInfo* pRenderingInfo);
-	void CmdEndRenderingKHR(VkInstance instance, VkCommandBuffer commandBuffer);
+	void registerExtensionFunctions(VkInstance instance);
 
 	bool pickPhysicalDevice();
 	bool deviceIsSuitable(VkPhysicalDevice device);
@@ -98,6 +97,10 @@ private:
 	bool createCommandBuffers();
 	bool recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 	bool recordCommandBufferDynamicRendering(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+
+	void transitionImageLayout(VkCommandBuffer commandBuffer, uint32_t imageIndex, VkImageLayout oldLayout, VkImageLayout newLayout,
+		VkAccessFlags2 srcAccessMask, VkAccessFlags2 dstAccessMask, VkPipelineStageFlags2 srcStageMask,
+		VkPipelineStageFlags2 dstStageMask);
 
 	bool createSyncObjects();
 
@@ -127,6 +130,10 @@ private:
 
 	const int MAX_FRAMES_BEING_PROCESSED = 2;
 	uint32_t mCurrentFrame = 0;
+
+	void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*);
+	void (*fpCmdEndRenderingKHR)(VkCommandBuffer);
+	void(*fpCmdPipelineBarrier2)(VkCommandBuffer, const VkDependencyInfo*);
 
 	const std::vector<const char*> mValidationLayers = {
 		"VK_LAYER_KHRONOS_validation"
