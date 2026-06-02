@@ -61,7 +61,8 @@ class VulkanManager {
 public:
 	bool initVulkan(GLFWwindow* window);
 	bool cleanupVulkan();
-	bool drawFrame();
+	bool drawFrame(GLFWwindow* window);
+	void markFramebuffersResized();
 private:
 	bool createInstance();
 	bool hasValidationLayerSupport();
@@ -73,6 +74,7 @@ private:
 		const VkAllocationCallbacks* pAlloator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 	void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger,
 		const VkAllocationCallbacks* pAllocator);
+
 	void registerExtensionFunctions(VkInstance instance);
 
 	bool pickPhysicalDevice();
@@ -90,6 +92,9 @@ private:
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> availablePresentModes);
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, GLFWwindow* window);
 	bool createSwapChain(GLFWwindow* window);
+
+	bool recreateSwapChain(GLFWwindow* window);
+	void cleanupSwapChain();
 
 	bool createImageViews();
 
@@ -131,6 +136,8 @@ private:
 	const int MAX_FRAMES_BEING_PROCESSED = 2;
 	uint32_t mCurrentFrame = 0;
 
+	bool mFramebuffersResized = false;
+
 	void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*);
 	void (*fpCmdEndRenderingKHR)(VkCommandBuffer);
 	void(*fpCmdPipelineBarrier2)(VkCommandBuffer, const VkDependencyInfo*);
@@ -147,3 +154,9 @@ private:
 		VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME
 	};
 };
+
+static void framebufferResizeCallback(GLFWwindow* window, int width, int height)
+{
+	VulkanManager* vulkanManagerRef = reinterpret_cast<VulkanManager*>(glfwGetWindowUserPointer(window));
+	vulkanManagerRef->markFramebuffersResized();
+}

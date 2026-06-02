@@ -254,11 +254,6 @@ bool GraphicsPipeline::createRenderPass(VkDevice logicalDevice, VkFormat colorAt
 
 void GraphicsPipeline::cleanupPipeline(VkDevice logicalDevice)
 {
-	for (VkFramebuffer framebuffer : mFramebuffers)
-	{
-		vkDestroyFramebuffer(logicalDevice, framebuffer, nullptr);
-	}
-
 	vkDestroyPipeline(logicalDevice, mGraphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(logicalDevice, mPipelineLayout, nullptr);
 
@@ -293,6 +288,14 @@ bool GraphicsPipeline::createFramebuffers(VkDevice logicalDevice, std::vector<Vk
 	}
 
 	return true;
+}
+
+void GraphicsPipeline::cleanupFrambuffers(VkDevice logicalDevice)
+{
+	for (VkFramebuffer framebuffer : mFramebuffers)
+	{
+		vkDestroyFramebuffer(logicalDevice, framebuffer, nullptr);
+	}
 }
 
 VkRenderPassBeginInfo GraphicsPipeline::getRenderPassBeginInfo(uint32_t framebufferIndex, VkExtent2D renderPassExtent)

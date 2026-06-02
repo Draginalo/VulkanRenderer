@@ -4,6 +4,9 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 {
 	std::cout << "\nInitializing Vulkan" << std::endl;
 
+	glfwSetWindowUserPointer(window, this);
+	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+
 	createInstance();
 	setUpDebugMessenger();
 	createSurface(window);
@@ -47,14 +50,10 @@ bool VulkanManager::cleanupVulkan()
 	}
 
 	vkDestroyCommandPool(mLogicalDevice, mCommandPool, nullptr);
+
+	cleanupSwapChain();
 	mGraphicsPipeline.cleanupPipeline(mLogicalDevice);
 
-	for (VkImageView imageView : mSwapChainImageViews)
-	{
-		vkDestroyImageView(mLogicalDevice, imageView, nullptr);
-	}
-
-	vkDestroySwapchainKHR(mLogicalDevice, mSwapChain, nullptr);
 	vkDestroyDevice(mLogicalDevice, nullptr);
 
 	if (enableValidationLayers) 
@@ -70,13 +69,27 @@ bool VulkanManager::cleanupVulkan()
 	return false;
 }
 
-bool VulkanManager::drawFrame()
+bool VulkanManager::drawFrame(GLFWwindow* window)
 {
 	vkWaitForFences(mLogicalDevice, 1, &mWhileRenderingFences[mCurrentFrame], VK_TRUE, UINT64_MAX);
-	vkResetFences(mLogicalDevice, 1, &mWhileRenderingFences[mCurrentFrame]);
 
 	uint32_t imageIndex;
-	vkAcquireNextImageKHR(mLogicalDevice, mSwapChain, UINT64_MAX, mImageAvailableSemaphores[mCurrentFrame], VK_NULL_HANDLE, &imageIndex);
+	VkResult result = vkAcquireNextImageKHR(mLogicalDevice, mSwapChain, UINT64_MAX, mImageAvailableSemaphores[mCurrentFrame], VK_NULL_HANDLE, &imageIndex);
+
+	if (result == VK_ERROR_OUT_OF_DATE_KHR)
+	{
+		//TODO: Maybe just store the window pointer as a member to avoid func parameter here
+		recreateSwapChain(window);
+		return true;
+	}
+	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+	{
+		std::cout << "Failed to aquire next swapchain image..." << std::endl;
+		return false;
+	}
+
+	//Resets fence only if image has been aquired
+	vkResetFences(mLogicalDevice, 1, &mWhileRenderingFences[mCurrentFrame]);
 
 	vkResetCommandBuffer(mCommandBuffers[mCurrentFrame], 0);
 
@@ -119,7 +132,20 @@ bool VulkanManager::drawFrame()
 	presentInfo.pImageIndices = &imageIndex;
 	presentInfo.pResults = nullptr;
 
-	vkQueuePresentKHR(mPresentQueue, &presentInfo);
+	result = vkQueuePresentKHR(mPresentQueue, &presentInfo);
+
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || mFramebuffersResized)
+	{
+		//TODO: Maybe just store the window pointer as a member to avoid func parameter here
+		recreateSwapChain(window);
+		mFramebuffersResized = false;
+		return true;
+	}
+	else if (result != VK_SUCCESS)
+	{
+		std::cout << "Failed to present swap chain image..." << std::endl;
+		return false;
+	}
 
 	mCurrentFrame = (mCurrentFrame + 1) % MAX_FRAMES_BEING_PROCESSED;
 
@@ -629,6 +655,45 @@ bool VulkanManager::createSwapChain(GLFWwindow* window)
 	return true;
 }
 
+bool VulkanManager::recreateSwapChain(GLFWwindow* window)
+{
+	int width, height = 0;
+	glfwGetFramebufferSize(window, &width, &height);
+	
+	//Stalls until window is valid/maximized
+	while (width == 0 || height == 0)
+	{
+		glfwGetFramebufferSize(window, &width, &height);
+		glfwWaitEvents();
+	}
+
+	vkDeviceWaitIdle(mLogicalDevice);
+
+	cleanupSwapChain();
+
+	createSwapChain(window);
+	createImageViews();
+
+	if (!mGraphicsPipeline.dynamicRenderingEnabled())
+	{
+		mGraphicsPipeline.createFramebuffers(mLogicalDevice, mSwapChainImageViews, mSwapChainImageExtent);
+	}
+
+	return false;
+}
+
+void VulkanManager::cleanupSwapChain()
+{
+	mGraphicsPipeline.cleanupFrambuffers(mLogicalDevice);
+
+	for (VkImageView imageView : mSwapChainImageViews)
+	{
+		vkDestroyImageView(mLogicalDevice, imageView, nullptr);
+	}
+
+	vkDestroySwapchainKHR(mLogicalDevice, mSwapChain, nullptr);
+}
+
 bool VulkanManager::createImageViews()
 {
 	int imageCount = mSwapChainImages.size();
@@ -889,4 +954,9 @@ bool VulkanManager::createSyncObjects()
 	}
 
 	return true;
+}
+
+void VulkanManager::markFramebuffersResized()
+{
+	mFramebuffersResized = true;
 }

@@ -16,6 +16,7 @@ public:
 
 	void cleanupPipeline(VkDevice logicalDevice);
 	bool createFramebuffers(VkDevice logicalDevice, std::vector<VkImageView> imageViews, VkExtent2D extent);
+	void cleanupFrambuffers(VkDevice logicalDevice);
 
 	VkRenderPassBeginInfo getRenderPassBeginInfo(uint32_t framebufferIndex, VkExtent2D renderPassExtent);
 	inline VkPipeline getPipeline() { return mGraphicsPipeline; }
