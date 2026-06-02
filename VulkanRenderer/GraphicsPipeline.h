@@ -11,7 +11,7 @@ public:
 	std::vector<char> readShaderFile(const std::string& filename);
 	VkShaderModule createShaderModule(VkDevice logicalDevice, const std::vector<char>& shaderByteCode);
 
-	bool createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent);
+	bool createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat);
 	bool createRenderPass(VkDevice logicalDevice, VkFormat colorAttachmentFormat);
 
 	void cleanupPipeline(VkDevice logicalDevice);
@@ -20,9 +20,13 @@ public:
 	VkRenderPassBeginInfo getRenderPassBeginInfo(uint32_t framebufferIndex, VkExtent2D renderPassExtent);
 	inline VkPipeline getPipeline() { return mGraphicsPipeline; }
 
+	inline bool dynamicRenderingEnabled() { return mDynamicRenderingEnabled; }
+
 private:
 	VkPipelineLayout mPipelineLayout;
 	VkRenderPass mRenderPass;
 	VkPipeline mGraphicsPipeline;
 	std::vector<VkFramebuffer> mFramebuffers;
+
+	bool mDynamicRenderingEnabled = true;
 };

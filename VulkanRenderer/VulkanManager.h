@@ -73,6 +73,8 @@ private:
 		const VkAllocationCallbacks* pAlloator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 	void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger,
 		const VkAllocationCallbacks* pAllocator);
+	void CmdBeginRenderingKHR(VkInstance instance, VkCommandBuffer commandBuffer, const VkRenderingInfo* pRenderingInfo);
+	void CmdEndRenderingKHR(VkInstance instance, VkCommandBuffer commandBuffer);
 
 	bool pickPhysicalDevice();
 	bool deviceIsSuitable(VkPhysicalDevice device);
@@ -95,6 +97,7 @@ private:
 	bool createCommandPool();
 	bool createCommandBuffers();
 	bool recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+	bool recordCommandBufferDynamicRendering(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
 	bool createSyncObjects();
 
@@ -123,7 +126,7 @@ private:
 	std::vector<VkFence> mWhileRenderingFences;
 
 	const int MAX_FRAMES_BEING_PROCESSED = 2;
-	uint32_t currentFrame = 0;
+	uint32_t mCurrentFrame = 0;
 
 	const std::vector<const char*> mValidationLayers = {
 		"VK_LAYER_KHRONOS_validation"
@@ -131,6 +134,9 @@ private:
 
 	std::vector<const char*> mRequiredDeviceExtension = { 
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-		VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME
+		VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+		VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+		VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
+		VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME
 	};
 };

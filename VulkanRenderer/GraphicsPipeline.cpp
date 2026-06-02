@@ -40,7 +40,7 @@ VkShaderModule GraphicsPipeline::createShaderModule(VkDevice logicalDevice, cons
 	return shaderModule;
 }
 
-bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent)
+bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat)
 {
 	std::vector<char> basicTriVertShaderCode = readShaderFile("../../../../Assets/Shaders/ByteEncoded/BasicTriangle_VS.spv");
 	std::vector<char> basicTriFragShaderCode = readShaderFile("../../../../Assets/Shaders/ByteEncoded/BasicTriangle_FS.spv");
@@ -160,6 +160,11 @@ bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D
 		return false;
 	}
 
+	VkPipelineRenderingCreateInfoKHR dynamicPipelineInfo{};
+	dynamicPipelineInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+	dynamicPipelineInfo.colorAttachmentCount = 1;
+	dynamicPipelineInfo.pColorAttachmentFormats = &colorAttachmentFormat;
+
 	VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo{};
 	graphicsPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	graphicsPipelineCreateInfo.stageCount = 2;
@@ -173,10 +178,19 @@ bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D
 	graphicsPipelineCreateInfo.pColorBlendState = &blendStateCreateInfo;
 	graphicsPipelineCreateInfo.pDynamicState = &dynamicStateCreateInfo;
 	graphicsPipelineCreateInfo.layout = mPipelineLayout;
-	graphicsPipelineCreateInfo.renderPass = mRenderPass;
 	graphicsPipelineCreateInfo.subpass = 0;
 	graphicsPipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 	graphicsPipelineCreateInfo.basePipelineIndex = -1;
+
+	if (!mDynamicRenderingEnabled) 
+	{
+		graphicsPipelineCreateInfo.renderPass = mRenderPass;
+	}
+	else
+	{
+		graphicsPipelineCreateInfo.renderPass = VK_NULL_HANDLE;
+		graphicsPipelineCreateInfo.pNext = &dynamicPipelineInfo;
+	}
 
 	if (vkCreateGraphicsPipelines(logicalDevice, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &mGraphicsPipeline) != VK_SUCCESS)
 	{
@@ -247,7 +261,11 @@ void GraphicsPipeline::cleanupPipeline(VkDevice logicalDevice)
 
 	vkDestroyPipeline(logicalDevice, mGraphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(logicalDevice, mPipelineLayout, nullptr);
-	vkDestroyRenderPass(logicalDevice, mRenderPass, nullptr);
+
+	if (!mDynamicRenderingEnabled)
+	{
+		vkDestroyRenderPass(logicalDevice, mRenderPass, nullptr);
+	}
 }
 
 bool GraphicsPipeline::createFramebuffers(VkDevice logicalDevice, std::vector<VkImageView> imageViews, VkExtent2D extent)
