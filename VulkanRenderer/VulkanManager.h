@@ -15,6 +15,7 @@
 #include <algorithm>
 
 #include "GraphicsPipeline.h"
+#include "VertexBufferData.h"
 
 #ifdef NDEBUG
 	const bool enableValidationLayers = false;
@@ -65,8 +66,10 @@ public:
 	void markFramebuffersResized();
 private:
 	bool createInstance();
+
 	bool hasValidationLayerSupport();
 	std::vector<const char*> getRequiredExtensions();
+
 	bool setUpDebugMessenger();
 	void populateDebugMessangerInfo(VkDebugUtilsMessengerCreateInfoEXT& debugMessengerInfo);
 
@@ -84,7 +87,6 @@ private:
 	bool supportsDeviceFeatures(VkPhysicalDevice device);
 
 	bool createLogicalDevice();
-
 	bool createSurface(GLFWwindow* window);
 
 	SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
@@ -125,6 +127,7 @@ private:
 	VkExtent2D mSwapChainImageExtent;
 
 	GraphicsPipeline mGraphicsPipeline;
+	VertexBufferData mVertexBufferData;
 
 	VkCommandPool mCommandPool;
 	std::vector<VkCommandBuffer> mCommandBuffers;

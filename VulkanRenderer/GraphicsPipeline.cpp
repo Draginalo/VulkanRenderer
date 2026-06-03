@@ -1,4 +1,5 @@
 #include "GraphicsPipeline.h"
+#include "VertexBufferData.h"
 
 std::vector<char> GraphicsPipeline::readShaderFile(const std::string& filename)
 {
@@ -72,12 +73,15 @@ bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D
 	dynamicStateCreateInfo.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
 	dynamicStateCreateInfo.pDynamicStates = dynamicStates.data();
 
+	VkVertexInputBindingDescription vertexBindingDescription = Vertex::getBindingDescription();
+	std::array<VkVertexInputAttributeDescription, 2> vertexAttributeDescription = Vertex::getAttributeDescriptions();
+
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 0;
-	vertexInputInfo.pVertexBindingDescriptions = nullptr;
-	vertexInputInfo.vertexAttributeDescriptionCount = 0;
-	vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.pVertexBindingDescriptions = &vertexBindingDescription;
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertexAttributeDescription.size());
+	vertexInputInfo.pVertexAttributeDescriptions = vertexAttributeDescription.data();
 
 	VkPipelineInputAssemblyStateCreateInfo assemblyInputInfo{};
 	assemblyInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;

@@ -24,6 +24,8 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	mGraphicsPipeline.createGraphicsPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat);
 
 	createCommandPool();
+	mVertexBufferData.createVertexBuffer(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue);
+	mVertexBufferData.createIndeciesBuffer(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue);
 	createCommandBuffers();
 	createSyncObjects();
 	registerExtensionFunctions(mInstance);
@@ -52,6 +54,7 @@ bool VulkanManager::cleanupVulkan()
 	vkDestroyCommandPool(mLogicalDevice, mCommandPool, nullptr);
 
 	cleanupSwapChain();
+	mVertexBufferData.cleanupBuffers(mLogicalDevice);
 	mGraphicsPipeline.cleanupPipeline(mLogicalDevice);
 
 	vkDestroyDevice(mLogicalDevice, nullptr);
@@ -798,7 +801,7 @@ bool VulkanManager::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t 
 
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-	vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+	mVertexBufferData.draw(commandBuffer);
 
 	vkCmdEndRenderPass(commandBuffer);
 
@@ -867,7 +870,7 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-	vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+	mVertexBufferData.draw(commandBuffer);
 
 	fpCmdEndRenderingKHR(commandBuffer);
 
