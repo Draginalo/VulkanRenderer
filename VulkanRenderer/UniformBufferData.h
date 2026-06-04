@@ -7,10 +7,12 @@
 #include <vector>
 #include <chrono>
 
+//Uniform buffer struct for mvp matrecies with explicit alignment specefied to match shader uniform alignment
+// Could also use #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES but does not always catch alignment for nested structs
 struct ModelViewProjectionUniformObject {
-	glm::mat4 model;
-	glm::mat4 view;
-	glm::mat4 proj;
+	alignas(16) glm::mat4 model;
+	alignas(16) glm::mat4 view;
+	alignas(16) glm::mat4 proj;
 };
 
 class UniformBufferData {

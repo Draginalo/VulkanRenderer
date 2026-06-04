@@ -5,7 +5,7 @@ layout(location = 1) in vec3 inColor;
 
 layout(location = 0) out vec3 vColor;
 
-layout(binding = 0) uniform ModelViewProjectionUniformObject {
+layout(set = 0, binding = 0) uniform ModelViewProjectionUniformObject {
 	mat4 model;
 	mat4 view;
 	mat4 proj;
