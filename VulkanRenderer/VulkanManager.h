@@ -16,6 +16,7 @@
 
 #include "GraphicsPipeline.h"
 #include "VertexBufferData.h"
+#include "UniformBufferData.h"
 
 #ifdef NDEBUG
 	const bool enableValidationLayers = false;
@@ -128,6 +129,7 @@ private:
 
 	GraphicsPipeline mGraphicsPipeline;
 	VertexBufferData mVertexBufferData;
+	UniformBufferData mUniformBufferData;
 
 	VkCommandPool mCommandPool;
 	std::vector<VkCommandBuffer> mCommandBuffers;

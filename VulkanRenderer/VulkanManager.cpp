@@ -21,11 +21,19 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 		mGraphicsPipeline.createFramebuffers(mLogicalDevice, mSwapChainImageViews, mSwapChainImageExtent);
 	}
 
-	mGraphicsPipeline.createGraphicsPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat);
+	mUniformBufferData.createDescriptorSetLayout(mLogicalDevice);
+
+	mGraphicsPipeline.createGraphicsPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, 
+		mUniformBufferData.getDescriptorSetLayout());
 
 	createCommandPool();
 	mVertexBufferData.createVertexBuffer(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue);
 	mVertexBufferData.createIndeciesBuffer(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue);
+	mUniformBufferData.createUniformBuffers(mLogicalDevice, mPhysicalDevice, MAX_FRAMES_BEING_PROCESSED);
+
+	mUniformBufferData.createDescriptorPool(mLogicalDevice, MAX_FRAMES_BEING_PROCESSED);
+	mUniformBufferData.createDescriptorSets(mLogicalDevice, MAX_FRAMES_BEING_PROCESSED);
+
 	createCommandBuffers();
 	createSyncObjects();
 	registerExtensionFunctions(mInstance);
@@ -54,6 +62,8 @@ bool VulkanManager::cleanupVulkan()
 	vkDestroyCommandPool(mLogicalDevice, mCommandPool, nullptr);
 
 	cleanupSwapChain();
+
+	mUniformBufferData.cleanup(mLogicalDevice);
 	mVertexBufferData.cleanupBuffers(mLogicalDevice);
 	mGraphicsPipeline.cleanupPipeline(mLogicalDevice);
 
@@ -104,6 +114,8 @@ bool VulkanManager::drawFrame(GLFWwindow* window)
 	{
 		recordCommandBuffer(mCommandBuffers[mCurrentFrame], imageIndex);
 	}
+
+	mUniformBufferData.updateUniformBuffer(mCurrentFrame, mSwapChainImageExtent.width / (float)mSwapChainImageExtent.height);
 
 	VkSubmitInfo submitInfo{};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -801,6 +813,7 @@ bool VulkanManager::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t 
 
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
+	mUniformBufferData.bindDescriptorSets(commandBuffer, mGraphicsPipeline.getPipelineLayout(), mCurrentFrame);
 	mVertexBufferData.draw(commandBuffer);
 
 	vkCmdEndRenderPass(commandBuffer);
@@ -870,6 +883,7 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
+	mUniformBufferData.bindDescriptorSets(commandBuffer, mGraphicsPipeline.getPipelineLayout(), mCurrentFrame);
 	mVertexBufferData.draw(commandBuffer);
 
 	fpCmdEndRenderingKHR(commandBuffer);

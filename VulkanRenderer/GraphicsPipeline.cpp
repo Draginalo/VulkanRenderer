@@ -1,5 +1,6 @@
 #include "GraphicsPipeline.h"
 #include "VertexBufferData.h"
+#include "UniformBufferData.h"
 
 std::vector<char> GraphicsPipeline::readShaderFile(const std::string& filename)
 {
@@ -41,7 +42,8 @@ VkShaderModule GraphicsPipeline::createShaderModule(VkDevice logicalDevice, cons
 	return shaderModule;
 }
 
-bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat)
+bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat,
+	VkDescriptorSetLayout pDescriptorSetLayout)
 {
 	std::vector<char> basicTriVertShaderCode = readShaderFile("../../../../Assets/Shaders/ByteEncoded/BasicTriangle_VS.spv");
 	std::vector<char> basicTriFragShaderCode = readShaderFile("../../../../Assets/Shaders/ByteEncoded/BasicTriangle_FS.spv");
@@ -112,7 +114,7 @@ bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D
 	rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizationInfo.lineWidth = 1.0;
 	rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-	rasterizationInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rasterizationInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; //Counter clockwise due to y coord being inverted
 	rasterizationInfo.depthBiasEnable = VK_FALSE;
 	rasterizationInfo.depthBiasConstantFactor = 0.0;
 	rasterizationInfo.depthBiasClamp = 0.0;
@@ -153,10 +155,10 @@ bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D
 
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
 	pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutCreateInfo.setLayoutCount = 0;
-	pipelineLayoutCreateInfo.pSetLayouts = nullptr;
+	pipelineLayoutCreateInfo.setLayoutCount = 1;
 	pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
 	pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+	pipelineLayoutCreateInfo.pSetLayouts = &pDescriptorSetLayout;
 
 	if (vkCreatePipelineLayout(logicalDevice, &pipelineLayoutCreateInfo, nullptr, &mPipelineLayout) != VK_SUCCESS)
 	{
@@ -196,7 +198,8 @@ bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D
 		graphicsPipelineCreateInfo.pNext = &dynamicPipelineInfo;
 	}
 
-	if (vkCreateGraphicsPipelines(logicalDevice, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &mGraphicsPipeline) != VK_SUCCESS)
+	if (vkCreateGraphicsPipelines(logicalDevice, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, 
+		&mGraphicsPipeline) != VK_SUCCESS)
 	{
 		std::cout << "\nFailed to create graphics pipeline..." << std::endl;
 		return false;
