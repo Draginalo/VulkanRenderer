@@ -27,6 +27,10 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 		mUniformBufferData.getDescriptorSetLayout());
 
 	createCommandPool();
+
+	createTextureImage(mLogicalDevice, mPhysicalDevice, mTextureImage, mTextureMemory, mCommandPool, mGraphicsQueue, 
+		"../Assets/Images/grr.png");
+
 	mVertexBufferData.createVertexBuffer(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue);
 	mVertexBufferData.createIndeciesBuffer(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue);
 	mUniformBufferData.createUniformBuffers(mLogicalDevice, mPhysicalDevice, MAX_FRAMES_BEING_PROCESSED);
@@ -62,6 +66,9 @@ bool VulkanManager::cleanupVulkan()
 	vkDestroyCommandPool(mLogicalDevice, mCommandPool, nullptr);
 
 	cleanupSwapChain();
+
+	vkDestroyImage(mLogicalDevice, mTextureImage, nullptr);
+	vkFreeMemory(mLogicalDevice, mTextureMemory, nullptr);
 
 	mUniformBufferData.cleanup(mLogicalDevice);
 	mVertexBufferData.cleanupBuffers(mLogicalDevice);
@@ -840,9 +847,9 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 		return false;
 	}
 
-	transitionImageLayout(commandBuffer, imageIndex, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+	transitionImageLayout(commandBuffer, mSwapChainImages[imageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 		VK_ACCESS_2_NONE, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_2_NONE,
-		VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT);
+		VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, fpCmdPipelineBarrier2);
 
 	VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
 	VkRenderingAttachmentInfoKHR colorAttachmentInfo{};
@@ -888,9 +895,9 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 
 	fpCmdEndRenderingKHR(commandBuffer);
 
-	transitionImageLayout(commandBuffer, imageIndex, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+	transitionImageLayout(commandBuffer, mSwapChainImages[imageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
 		VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_2_NONE, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-		VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
+		VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, fpCmdPipelineBarrier2);
 
 	if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
 	{
@@ -899,39 +906,6 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 	}
 
 	return false;
-}
-
-void VulkanManager::transitionImageLayout(VkCommandBuffer commandBuffer, uint32_t imageIndex, VkImageLayout oldLayout, VkImageLayout newLayout,
-	VkAccessFlags2 srcAccessMask, VkAccessFlags2 dstAccessMask, VkPipelineStageFlags2 srcStageMask, 
-	VkPipelineStageFlags2 dstStageMask)
-{
-	VkImageSubresourceRange subResourceRange{};
-	subResourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	subResourceRange.baseMipLevel = 0;
-	subResourceRange.levelCount = 1;
-	subResourceRange.baseArrayLayer = 0;
-	subResourceRange.layerCount = 1;
-
-	VkImageMemoryBarrier2 imageMemoryBarrierInfo{};
-	imageMemoryBarrierInfo.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-	imageMemoryBarrierInfo.image = mSwapChainImages[imageIndex];
-	imageMemoryBarrierInfo.oldLayout = oldLayout;
-	imageMemoryBarrierInfo.newLayout = newLayout;
-	imageMemoryBarrierInfo.srcAccessMask = srcAccessMask;
-	imageMemoryBarrierInfo.dstAccessMask = dstAccessMask;
-	imageMemoryBarrierInfo.srcStageMask = srcStageMask;
-	imageMemoryBarrierInfo.dstStageMask = dstStageMask;
-	imageMemoryBarrierInfo.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	imageMemoryBarrierInfo.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	imageMemoryBarrierInfo.subresourceRange = subResourceRange;
-
-	VkDependencyInfo dependencyInfo{};
-	dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-	dependencyInfo.imageMemoryBarrierCount = 1;
-	dependencyInfo.dependencyFlags = 0;
-	dependencyInfo.pImageMemoryBarriers = &imageMemoryBarrierInfo;
-
-	fpCmdPipelineBarrier2(commandBuffer, &dependencyInfo);
 }
 
 bool VulkanManager::createSyncObjects()

@@ -41,34 +41,53 @@ bool createBuffer(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkDev
 bool copyBuffer(VkDevice logicalDevice, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size,
 	VkCommandPool commandPool, VkQueue submitQueue)
 {
+	VkCommandBuffer commandBuffer;
+	if (!beginSingleTimeCommandBuffer(logicalDevice, &commandBuffer, commandPool))
+	{
+		std::cout << "\nFailed to begin command buffer for buffer copy..." << std::endl;
+		return false;
+	}
+
+	VkBufferCopy copyRegion{0, 0};
+	copyRegion.size = size;
+	vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+	if (!endSingleTimeCommandBuffer(logicalDevice, commandBuffer, commandPool, submitQueue))
+	{
+		std::cout << "\nFailed to end command buffer for buffer copy..." << std::endl;
+		return false;
+	}
+
+	return true;
+}
+
+bool beginSingleTimeCommandBuffer(VkDevice logicalDevice, VkCommandBuffer* pCommandBuffer, VkCommandPool commandPool)
+{
 	VkCommandBufferAllocateInfo cmdBufferAllocateInfo{};
 	cmdBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	cmdBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	cmdBufferAllocateInfo.commandPool = commandPool;
 	cmdBufferAllocateInfo.commandBufferCount = 1;
 
-	VkCommandBuffer commandBuffer;
-	vkAllocateCommandBuffers(logicalDevice, &cmdBufferAllocateInfo, &commandBuffer);
+	vkAllocateCommandBuffers(logicalDevice, &cmdBufferAllocateInfo, pCommandBuffer);
 
 	VkCommandBufferBeginInfo cmdBufferBeginInfo{};
 	cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	if (vkBeginCommandBuffer(commandBuffer, &cmdBufferBeginInfo) != VK_SUCCESS)
+	if (vkBeginCommandBuffer(*pCommandBuffer, &cmdBufferBeginInfo) != VK_SUCCESS)
 	{
-		std::cout << "\nFailed to begin command buffer for buffer copy..." << std::endl;
 		return false;
 	}
 
-	VkBufferCopy copyRegion{};
-	copyRegion.srcOffset = 0;
-	copyRegion.dstOffset = 0;
-	copyRegion.size = size;
-	vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+	return true;
+}
 
+bool endSingleTimeCommandBuffer(VkDevice logicalDevice, VkCommandBuffer commandBuffer, VkCommandPool commandPool, VkQueue submitQueue)
+{
 	if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
 	{
-		std::cout << "\nFailed to end command buffer for buffer copy..." << std::endl;
+		std::cout << "\nFailed to end single time command buffer..." << std::endl;
 		return false;
 	}
 
@@ -79,7 +98,7 @@ bool copyBuffer(VkDevice logicalDevice, VkBuffer srcBuffer, VkBuffer dstBuffer, 
 
 	if (vkQueueSubmit(submitQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
 	{
-		std::cout << "\nFailed to submit command buffer to queue for buffer copy..." << std::endl;
+		std::cout << "\nFailed to submit single time command buffer to queue..." << std::endl;
 		return false;
 	}
 

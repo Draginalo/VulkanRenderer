@@ -13,10 +13,12 @@
 #include <vector>
 #include <set>
 #include <algorithm>
+#include <string>
 
 #include "GraphicsPipeline.h"
 #include "VertexBufferData.h"
 #include "UniformBufferData.h"
+#include "Helpers/TextureImageHelpers.h"
 
 #ifdef NDEBUG
 	const bool enableValidationLayers = false;
@@ -106,10 +108,6 @@ private:
 	bool recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 	bool recordCommandBufferDynamicRendering(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
-	void transitionImageLayout(VkCommandBuffer commandBuffer, uint32_t imageIndex, VkImageLayout oldLayout, VkImageLayout newLayout,
-		VkAccessFlags2 srcAccessMask, VkAccessFlags2 dstAccessMask, VkPipelineStageFlags2 srcStageMask,
-		VkPipelineStageFlags2 dstStageMask);
-
 	bool createSyncObjects();
 
 	VkInstance mInstance;
@@ -146,6 +144,9 @@ private:
 	void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*);
 	void (*fpCmdEndRenderingKHR)(VkCommandBuffer);
 	void(*fpCmdPipelineBarrier2)(VkCommandBuffer, const VkDependencyInfo*);
+
+	VkImage mTextureImage;
+	VkDeviceMemory mTextureMemory;
 
 	const std::vector<const char*> mValidationLayers = {
 		"VK_LAYER_KHRONOS_validation"

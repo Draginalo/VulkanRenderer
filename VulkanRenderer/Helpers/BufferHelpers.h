@@ -9,4 +9,7 @@ bool createBuffer(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkDev
 bool copyBuffer(VkDevice logicalDevice, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size,
 	VkCommandPool commandPool, VkQueue submitQueue);
 
-static uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
+bool beginSingleTimeCommandBuffer(VkDevice logicalDevice, VkCommandBuffer* pCommandBuffer, VkCommandPool commandPool);
+bool endSingleTimeCommandBuffer(VkDevice logicalDevice, VkCommandBuffer commandBuffer, VkCommandPool commandPool, VkQueue submitQueue);
+
+uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
