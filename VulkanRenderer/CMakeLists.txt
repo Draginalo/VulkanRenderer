@@ -26,7 +26,7 @@ add_executable (VulkanRenderer ${VULKAN_RENDERER_SRC} ${VULKAN_RENDERER_INC})
 target_link_libraries(VulkanRenderer PRIVATE Vulkan::Vulkan)
 
 # Adds glm and glfw libraries
-target_link_libraries(VulkanRenderer PUBLIC glfw glm)
+target_link_libraries(VulkanRenderer PUBLIC glfw glm stb_image)
 
 #Adds the compiled shaders as a dependency (generates the encoded shaders at build time)
 add_dependencies(VulkanRenderer COMPILED_SHADERS)
