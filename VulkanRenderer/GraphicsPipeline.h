@@ -13,13 +13,16 @@ public:
 
 	bool createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat, 
 		VkDescriptorSetLayout pDescriptorSetLayout);
-	bool createRenderPass(VkDevice logicalDevice, VkFormat colorAttachmentFormat);
+	bool createRenderPass(VkDevice logicalDevice, VkFormat colorAttachmentFormat, VkFormat depthAttachmentFormat);
 
 	void cleanupPipeline(VkDevice logicalDevice);
-	bool createFramebuffers(VkDevice logicalDevice, std::vector<VkImageView> imageViews, VkExtent2D extent);
+	bool createFramebuffers(VkDevice logicalDevice, std::vector<VkImageView> imageViews, VkImageView depthImageView, 
+		VkExtent2D extent);
 	void cleanupFrambuffers(VkDevice logicalDevice);
 
-	VkRenderPassBeginInfo getRenderPassBeginInfo(uint32_t framebufferIndex, VkExtent2D renderPassExtent);
+	VkRenderPassBeginInfo getRenderPassBeginInfo(uint32_t framebufferIndex, VkExtent2D renderPassExtent, 
+		std::array<VkClearValue, 2> clearValues);
+
 	inline VkPipeline getPipeline() { return mGraphicsPipeline; }
 	inline VkPipelineLayout getPipelineLayout() { return mPipelineLayout; }
 
@@ -31,5 +34,5 @@ private:
 	VkPipeline mGraphicsPipeline;
 	std::vector<VkFramebuffer> mFramebuffers;
 
-	bool mDynamicRenderingEnabled = true;
+	bool mDynamicRenderingEnabled = false;
 };

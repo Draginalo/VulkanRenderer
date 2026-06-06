@@ -129,7 +129,13 @@ bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D
 	multisamplingInfo.alphaToCoverageEnable = VK_FALSE;
 	multisamplingInfo.alphaToOneEnable = VK_FALSE;
 
-	//VkPipelineDepthStencilStateCreateInfo here
+	VkPipelineDepthStencilStateCreateInfo depthStencilInfo{};
+	depthStencilInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	depthStencilInfo.depthTestEnable = VK_TRUE;
+	depthStencilInfo.depthWriteEnable = VK_TRUE;
+	depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS;
+	depthStencilInfo.depthBoundsTestEnable = VK_FALSE;
+	depthStencilInfo.stencilTestEnable = VK_FALSE;
 
 	VkPipelineColorBlendAttachmentState colorBlendAttachment{};
 	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
@@ -180,7 +186,7 @@ bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D
 	graphicsPipelineCreateInfo.pViewportState = &viewportCreateInfo;
 	graphicsPipelineCreateInfo.pRasterizationState = &rasterizationInfo;
 	graphicsPipelineCreateInfo.pMultisampleState = &multisamplingInfo;
-	graphicsPipelineCreateInfo.pDepthStencilState = nullptr;
+	graphicsPipelineCreateInfo.pDepthStencilState = &depthStencilInfo;
 	graphicsPipelineCreateInfo.pColorBlendState = &blendStateCreateInfo;
 	graphicsPipelineCreateInfo.pDynamicState = &dynamicStateCreateInfo;
 	graphicsPipelineCreateInfo.layout = mPipelineLayout;
@@ -211,7 +217,7 @@ bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D
 	return true;
 }
 
-bool GraphicsPipeline::createRenderPass(VkDevice logicalDevice, VkFormat colorAttachmentFormat)
+bool GraphicsPipeline::createRenderPass(VkDevice logicalDevice, VkFormat colorAttachmentFormat, VkFormat depthAttachmentFormat)
 {
 	VkAttachmentDescription colorAttachment{};
 	colorAttachment.format = colorAttachmentFormat;
@@ -223,28 +229,44 @@ bool GraphicsPipeline::createRenderPass(VkDevice logicalDevice, VkFormat colorAt
 	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
+	VkAttachmentDescription depthAttachment{};
+	depthAttachment.format = depthAttachmentFormat;
+	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
 	VkAttachmentReference colorAttachmentRef{};
 	colorAttachmentRef.attachment = 0;
 	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference depthAttachmentRef{};
+	depthAttachmentRef.attachment = 1;
+	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	VkSubpassDescription subPassDescription{};
 	subPassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subPassDescription.colorAttachmentCount = 1;
 	subPassDescription.pColorAttachments = &colorAttachmentRef;
+	subPassDescription.pDepthStencilAttachment = &depthAttachmentRef;
 
 	//Dependencies to only allow image transitions to happen after the image has been retreived
 	VkSubpassDependency subPassDepedency{};
 	subPassDepedency.srcSubpass = VK_SUBPASS_EXTERNAL;
 	subPassDepedency.dstSubpass = 0;
-	subPassDepedency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	subPassDepedency.srcAccessMask = 0;
-	subPassDepedency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	subPassDepedency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	subPassDepedency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	subPassDepedency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	subPassDepedency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	subPassDepedency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
+	std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
 	VkRenderPassCreateInfo renderPassCreateInfo{};
 	renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassCreateInfo.attachmentCount = 1;
-	renderPassCreateInfo.pAttachments = &colorAttachment;
+	renderPassCreateInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+	renderPassCreateInfo.pAttachments = attachments.data();
 	renderPassCreateInfo.subpassCount = 1;
 	renderPassCreateInfo.pSubpasses = &subPassDescription;
 	renderPassCreateInfo.dependencyCount = 1;
@@ -270,7 +292,8 @@ void GraphicsPipeline::cleanupPipeline(VkDevice logicalDevice)
 	}
 }
 
-bool GraphicsPipeline::createFramebuffers(VkDevice logicalDevice, std::vector<VkImageView> imageViews, VkExtent2D extent)
+bool GraphicsPipeline::createFramebuffers(VkDevice logicalDevice, std::vector<VkImageView> imageViews, VkImageView depthImageView, 
+	VkExtent2D extent)
 {
 	int imageViewCount = imageViews.size();
 
@@ -278,11 +301,13 @@ bool GraphicsPipeline::createFramebuffers(VkDevice logicalDevice, std::vector<Vk
 
 	for (int i = 0; i < imageViewCount; i++)
 	{
+		std::array<VkImageView, 2> attatchments = { imageViews[i], depthImageView };
+
 		VkFramebufferCreateInfo framebufferInfo{};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebufferInfo.renderPass = mRenderPass;
-		framebufferInfo.attachmentCount = 1;
-		framebufferInfo.pAttachments = &imageViews[i];
+		framebufferInfo.attachmentCount = static_cast<uint32_t>(attatchments.size());
+		framebufferInfo.pAttachments = attatchments.data();
 		framebufferInfo.width = extent.width;
 		framebufferInfo.height = extent.height;
 		framebufferInfo.layers = 1;
@@ -305,7 +330,8 @@ void GraphicsPipeline::cleanupFrambuffers(VkDevice logicalDevice)
 	}
 }
 
-VkRenderPassBeginInfo GraphicsPipeline::getRenderPassBeginInfo(uint32_t framebufferIndex, VkExtent2D renderPassExtent)
+VkRenderPassBeginInfo GraphicsPipeline::getRenderPassBeginInfo(uint32_t framebufferIndex, VkExtent2D renderPassExtent,
+	std::array<VkClearValue, 2> clearValues)
 {
 	VkRenderPassBeginInfo renderPassBeginInfo{};
 	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -313,10 +339,8 @@ VkRenderPassBeginInfo GraphicsPipeline::getRenderPassBeginInfo(uint32_t framebuf
 	renderPassBeginInfo.framebuffer = mFramebuffers[framebufferIndex];
 	renderPassBeginInfo.renderArea.offset = { 0, 0 };
 	renderPassBeginInfo.renderArea.extent = renderPassExtent;
-
-	VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
-	renderPassBeginInfo.clearValueCount = 1;
-	renderPassBeginInfo.pClearValues = &clearColor;
+	renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+	renderPassBeginInfo.pClearValues = clearValues.data();
 
 	return renderPassBeginInfo;
 }

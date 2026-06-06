@@ -17,8 +17,14 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 
 	if (!mGraphicsPipeline.dynamicRenderingEnabled())
 	{
-		mGraphicsPipeline.createRenderPass(mLogicalDevice, mSwapChainImageFormat);
-		mGraphicsPipeline.createFramebuffers(mLogicalDevice, mSwapChainImageViews, mSwapChainImageExtent);
+		mGraphicsPipeline.createRenderPass(mLogicalDevice, mSwapChainImageFormat, findDepthFormat());
+	}
+
+	createDepthResources();
+
+	if (!mGraphicsPipeline.dynamicRenderingEnabled())
+	{
+		mGraphicsPipeline.createFramebuffers(mLogicalDevice, mSwapChainImageViews, mDepthImageView, mSwapChainImageExtent);
 	}
 
 	mUniformBufferData.createDescriptorSetLayout(mLogicalDevice);
@@ -31,7 +37,7 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	createTextureImage(mLogicalDevice, mPhysicalDevice, mTextureImage, mTextureMemory, mCommandPool, mGraphicsQueue, 
 		"../Assets/Images/grr.png");
 
-	if (!createImageView(mLogicalDevice, mTextureImage, &mTextureImageView, VK_FORMAT_R8G8B8A8_SRGB) != VK_SUCCESS)
+	if (!createImageView(mLogicalDevice, mTextureImage, &mTextureImageView, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT) != VK_SUCCESS)
 	{
 		std::cout << "\nFailed to create texture image view..." << std::endl;
 		return false;
@@ -79,6 +85,10 @@ bool VulkanManager::cleanupVulkan()
 	vkDestroyImageView(mLogicalDevice, mTextureImageView, nullptr);
 	vkDestroyImage(mLogicalDevice, mTextureImage, nullptr);
 	vkFreeMemory(mLogicalDevice, mTextureMemory, nullptr);
+
+	vkDestroyImageView(mLogicalDevice, mDepthImageView, nullptr);
+	vkDestroyImage(mLogicalDevice, mDepthImage, nullptr);
+	vkFreeMemory(mLogicalDevice, mDepthMemory, nullptr);
 
 	mUniformBufferData.cleanup(mLogicalDevice);
 	mVertexBufferData.cleanupBuffers(mLogicalDevice);
@@ -468,6 +478,37 @@ bool VulkanManager::supportsDeviceFeatures(VkPhysicalDevice device)
 		deviceExtendedStateFeatures.extendedDynamicState && deviceFeatures.features.samplerAnisotropy;
 }
 
+VkFormat VulkanManager::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+{
+	for (VkFormat format : candidates)
+	{
+		VkFormatProperties properties{};
+		vkGetPhysicalDeviceFormatProperties(mPhysicalDevice, format, &properties);
+
+		if (tiling == VK_IMAGE_TILING_LINEAR && (properties.linearTilingFeatures & features) == features)
+		{
+			return format;
+		}
+		else if (tiling == VK_IMAGE_TILING_OPTIMAL && (properties.optimalTilingFeatures & features) == features)
+		{
+			return format;
+		}
+	}
+
+	throw std::runtime_error("Could not find supported format...");
+}
+
+VkFormat VulkanManager::findDepthFormat()
+{
+	return findSupportedFormat({ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
+		VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+}
+
+bool VulkanManager::hasStencilComponent(VkFormat format)
+{
+	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
+}
+
 bool VulkanManager::createLogicalDevice()
 {
 	//Can replace this with the previously found queue index info when determining queue family suitability
@@ -710,7 +751,7 @@ bool VulkanManager::recreateSwapChain(GLFWwindow* window)
 
 	if (!mGraphicsPipeline.dynamicRenderingEnabled())
 	{
-		mGraphicsPipeline.createFramebuffers(mLogicalDevice, mSwapChainImageViews, mSwapChainImageExtent);
+		mGraphicsPipeline.createFramebuffers(mLogicalDevice, mSwapChainImageViews, mDepthImageView, mSwapChainImageExtent);
 	}
 
 	return false;
@@ -735,7 +776,7 @@ bool VulkanManager::createImageViews()
 
 	for (int i = 0; i < imageCount; i++)
 	{
-		if (!createImageView(mLogicalDevice, mSwapChainImages[i], &mSwapChainImageViews[i], mSwapChainImageFormat))
+		if (!createImageView(mLogicalDevice, mSwapChainImages[i], &mSwapChainImageViews[i], mSwapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT))
 		{
 			std::cout << "\nFailed to create swap chain image view..." << std::endl;
 			return false;
@@ -773,6 +814,19 @@ bool VulkanManager::createTextureSampler()
 		std::cout << "\nFailed to create texture sampler..." << std::endl;
 		return false;
 	}
+
+	return true;
+}
+
+bool VulkanManager::createDepthResources()
+{
+	VkFormat depthFormat = findDepthFormat();
+
+	createImage(mLogicalDevice, mPhysicalDevice, mSwapChainImageExtent.width, mSwapChainImageExtent.height, depthFormat,
+		VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		mDepthImage, mDepthMemory);
+
+	createImageView(mLogicalDevice, mDepthImage, &mDepthImageView, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 
 	return true;
 }
@@ -826,8 +880,13 @@ bool VulkanManager::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t 
 		std::cout << "\nFailed to begin recording command buffer..." << std::endl;
 		return false;
 	}
+	
+	std::array<VkClearValue, 2> clearValues{};
+	clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+	clearValues[1].depthStencil = { 1.0f, 0 };
 
-	VkRenderPassBeginInfo renderPassBeginInfo = mGraphicsPipeline.getRenderPassBeginInfo(imageIndex, mSwapChainImageExtent);
+	VkRenderPassBeginInfo renderPassBeginInfo = mGraphicsPipeline.getRenderPassBeginInfo(imageIndex, mSwapChainImageExtent, 
+		clearValues);
 
 	vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 

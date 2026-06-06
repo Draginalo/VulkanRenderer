@@ -178,7 +178,7 @@ void copyBufferToImage(VkDevice logicalDevice, VkBuffer srcBuffer, VkImage dstIm
 	endSingleTimeCommandBuffer(logicalDevice, commandBuffer, commandPool, submitQueue);
 }
 
-bool createImageView(VkDevice logicalDevice, VkImage image, VkImageView* pImageView, VkFormat format)
+bool createImageView(VkDevice logicalDevice, VkImage image, VkImageView* pImageView, VkFormat format, VkImageAspectFlags aspectFlags)
 {
 	VkImageViewCreateInfo imageViewCreateInfo{};
 	imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -189,7 +189,7 @@ bool createImageView(VkDevice logicalDevice, VkImage image, VkImageView* pImageV
 	imageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 	imageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
 	imageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-	imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	imageViewCreateInfo.subresourceRange.aspectMask = aspectFlags;
 	imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
 	imageViewCreateInfo.subresourceRange.levelCount = 1;
 	imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;

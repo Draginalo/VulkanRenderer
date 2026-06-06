@@ -89,6 +89,10 @@ private:
 	bool supportsDeviceExtensions(VkPhysicalDevice device);
 	bool supportsDeviceFeatures(VkPhysicalDevice device);
 
+	VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+	VkFormat findDepthFormat();
+	bool hasStencilComponent(VkFormat format);
+
 	bool createLogicalDevice();
 	bool createSurface(GLFWwindow* window);
 
@@ -103,6 +107,7 @@ private:
 
 	bool createImageViews();
 	bool createTextureSampler();
+	bool createDepthResources();
 
 	bool createCommandPool();
 	bool createCommandBuffers();
@@ -150,6 +155,10 @@ private:
 	VkDeviceMemory mTextureMemory;
 	VkImageView mTextureImageView;
 	VkSampler mTextureSampler;
+
+	VkImage mDepthImage;
+	VkDeviceMemory mDepthMemory;
+	VkImageView mDepthImageView;
 
 	const std::vector<const char*> mValidationLayers = {
 		"VK_LAYER_KHRONOS_validation"

@@ -16,4 +16,4 @@ void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkImage
 void copyBufferToImage(VkDevice logicalDevice, VkBuffer srcBuffer, VkImage dstImage, uint32_t width, uint32_t height,
 	VkCommandPool commandPool, VkQueue submitQueue);
 
-bool createImageView(VkDevice logicalDevice, VkImage image, VkImageView* pImageView, VkFormat format);
+bool createImageView(VkDevice logicalDevice, VkImage image, VkImageView* pImageView, VkFormat format, VkImageAspectFlags aspectFlags);
