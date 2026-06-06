@@ -92,11 +92,11 @@ bool createImage(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, uint32
 
 void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout,
 	VkAccessFlags2 srcAccessMask, VkAccessFlags2 dstAccessMask, VkPipelineStageFlags2 srcStageMask,
-	VkPipelineStageFlags2 dstStageMask, void(*fpCmdPipelineBarrier2)(VkCommandBuffer, const VkDependencyInfo*))
+	VkPipelineStageFlags2 dstStageMask, VkImageAspectFlags aspectMask, void(*fpCmdPipelineBarrier2)(VkCommandBuffer, const VkDependencyInfo*))
 {
 	if (fpCmdPipelineBarrier2 != nullptr) {
 		VkImageSubresourceRange subResourceRange{};
-		subResourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		subResourceRange.aspectMask = aspectMask;
 		subResourceRange.baseMipLevel = 0;
 		subResourceRange.levelCount = 1;
 		subResourceRange.baseArrayLayer = 0;
@@ -156,7 +156,7 @@ void copyBufferToImage(VkDevice logicalDevice, VkBuffer srcBuffer, VkImage dstIm
 
 	transitionImageLayout(commandBuffer, dstImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
 		VK_IMAGE_LAYOUT_UNDEFINED, VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 
-		VK_PIPELINE_STAGE_2_TRANSFER_BIT, nullptr);
+		VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_IMAGE_ASPECT_COLOR_BIT, nullptr);
 
 	VkBufferImageCopy imageRegion{};
 	imageRegion.bufferOffset = 0;
@@ -173,7 +173,7 @@ void copyBufferToImage(VkDevice logicalDevice, VkBuffer srcBuffer, VkImage dstIm
 
 	transitionImageLayout(commandBuffer, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
 		VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_ACCESS_2_SHADER_READ_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT, 
-		VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, nullptr);
+		VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_IMAGE_ASPECT_COLOR_BIT, nullptr);
 
 	endSingleTimeCommandBuffer(logicalDevice, commandBuffer, commandPool, submitQueue);
 }

@@ -12,7 +12,7 @@ public:
 	VkShaderModule createShaderModule(VkDevice logicalDevice, const std::vector<char>& shaderByteCode);
 
 	bool createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat, 
-		VkDescriptorSetLayout pDescriptorSetLayout);
+		VkFormat depthAttachmentFormat, VkDescriptorSetLayout pDescriptorSetLayout);
 	bool createRenderPass(VkDevice logicalDevice, VkFormat colorAttachmentFormat, VkFormat depthAttachmentFormat);
 
 	void cleanupPipeline(VkDevice logicalDevice);
@@ -34,5 +34,5 @@ private:
 	VkPipeline mGraphicsPipeline;
 	std::vector<VkFramebuffer> mFramebuffers;
 
-	bool mDynamicRenderingEnabled = false;
+	bool mDynamicRenderingEnabled = true;
 };

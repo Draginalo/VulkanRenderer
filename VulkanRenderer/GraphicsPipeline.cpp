@@ -43,7 +43,7 @@ VkShaderModule GraphicsPipeline::createShaderModule(VkDevice logicalDevice, cons
 }
 
 bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat,
-	VkDescriptorSetLayout pDescriptorSetLayout)
+	VkFormat depthAttachmentFormat, VkDescriptorSetLayout pDescriptorSetLayout)
 {
 	std::vector<char> basicTriVertShaderCode = readShaderFile("../../../../Assets/Shaders/ByteEncoded/BasicTriangle_VS.spv");
 	std::vector<char> basicTriFragShaderCode = readShaderFile("../../../../Assets/Shaders/ByteEncoded/BasicTriangle_FS.spv");
@@ -176,6 +176,7 @@ bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D
 	dynamicPipelineInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
 	dynamicPipelineInfo.colorAttachmentCount = 1;
 	dynamicPipelineInfo.pColorAttachmentFormats = &colorAttachmentFormat;
+	dynamicPipelineInfo.depthAttachmentFormat = depthAttachmentFormat;
 
 	VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo{};
 	graphicsPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;

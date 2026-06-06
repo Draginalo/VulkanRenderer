@@ -15,9 +15,10 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	createSwapChain(window);
 	createImageViews();
 
+	VkFormat depthFormat = findDepthFormat();
 	if (!mGraphicsPipeline.dynamicRenderingEnabled())
 	{
-		mGraphicsPipeline.createRenderPass(mLogicalDevice, mSwapChainImageFormat, findDepthFormat());
+		mGraphicsPipeline.createRenderPass(mLogicalDevice, mSwapChainImageFormat, depthFormat);
 	}
 
 	createDepthResources();
@@ -29,7 +30,7 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 
 	mUniformBufferData.createDescriptorSetLayout(mLogicalDevice);
 
-	mGraphicsPipeline.createGraphicsPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, 
+	mGraphicsPipeline.createGraphicsPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, depthFormat,
 		mUniformBufferData.getDescriptorSetLayout());
 
 	createCommandPool();
@@ -746,8 +747,13 @@ bool VulkanManager::recreateSwapChain(GLFWwindow* window)
 
 	cleanupSwapChain();
 
+	vkDestroyImageView(mLogicalDevice, mDepthImageView, nullptr);
+	vkDestroyImage(mLogicalDevice, mDepthImage, nullptr);
+	vkFreeMemory(mLogicalDevice, mDepthMemory, nullptr);
+
 	createSwapChain(window);
 	createImageViews();
+	createDepthResources();
 
 	if (!mGraphicsPipeline.dynamicRenderingEnabled())
 	{
@@ -935,11 +941,18 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 		return false;
 	}
 
-	transitionImageLayout(commandBuffer, mSwapChainImages[imageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-		VK_ACCESS_2_NONE, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_2_NONE,
-		VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, fpCmdPipelineBarrier2);
+	//Transitions swap chain and depth images to the correct formats, accesses, and stages for rendering
+	transitionImageLayout(commandBuffer, mSwapChainImages[imageIndex], VK_IMAGE_LAYOUT_UNDEFINED, 
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_2_NONE, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_2_NONE,
+		VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_IMAGE_ASPECT_COLOR_BIT, fpCmdPipelineBarrier2);
+	transitionImageLayout(commandBuffer, mDepthImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+		VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, 
+		VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+		VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, 
+		VK_IMAGE_ASPECT_DEPTH_BIT, fpCmdPipelineBarrier2);
 
 	VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
+	VkClearValue clearDepth = { 1.0f, 0 };
 	VkRenderingAttachmentInfoKHR colorAttachmentInfo{};
 	colorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
 	colorAttachmentInfo.clearValue = clearColor;
@@ -949,6 +962,15 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 	colorAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	colorAttachmentInfo.imageView = mSwapChainImageViews[imageIndex];
 
+	VkRenderingAttachmentInfoKHR depthAttachmentInfo{};
+	depthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+	depthAttachmentInfo.clearValue = clearDepth;
+	depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	depthAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+	depthAttachmentInfo.imageView = mDepthImageView;
+
 	VkRenderingInfoKHR renderingInfo{};
 	renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
 	renderingInfo.colorAttachmentCount = 1;
@@ -956,7 +978,7 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 	renderingInfo.renderArea.offset = { 0, 0 };
 	renderingInfo.renderArea.extent = mSwapChainImageExtent;
 	renderingInfo.layerCount = 1;
-	renderingInfo.pDepthAttachment = VK_NULL_HANDLE;
+	renderingInfo.pDepthAttachment = &depthAttachmentInfo;
 
 	fpCmdBeginRenderingKHR(commandBuffer, &renderingInfo);
 
@@ -983,9 +1005,11 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 
 	fpCmdEndRenderingKHR(commandBuffer);
 
-	transitionImageLayout(commandBuffer, mSwapChainImages[imageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-		VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_2_NONE, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-		VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, fpCmdPipelineBarrier2);
+	//Transitions swap chain image to the correct formats, accesses, and stages for presenting
+	transitionImageLayout(commandBuffer, mSwapChainImages[imageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
+		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_2_NONE, 
+		VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, 
+		VK_IMAGE_ASPECT_COLOR_BIT, fpCmdPipelineBarrier2);
 
 	if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
 	{
