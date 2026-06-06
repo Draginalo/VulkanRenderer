@@ -31,12 +31,20 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	createTextureImage(mLogicalDevice, mPhysicalDevice, mTextureImage, mTextureMemory, mCommandPool, mGraphicsQueue, 
 		"../Assets/Images/grr.png");
 
+	if (!createImageView(mLogicalDevice, mTextureImage, &mTextureImageView, VK_FORMAT_R8G8B8A8_SRGB) != VK_SUCCESS)
+	{
+		std::cout << "\nFailed to create texture image view..." << std::endl;
+		return false;
+	}
+
+	createTextureSampler();
+
 	mVertexBufferData.createVertexBuffer(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue);
 	mVertexBufferData.createIndeciesBuffer(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue);
 	mUniformBufferData.createUniformBuffers(mLogicalDevice, mPhysicalDevice, MAX_FRAMES_BEING_PROCESSED);
 
 	mUniformBufferData.createDescriptorPool(mLogicalDevice, MAX_FRAMES_BEING_PROCESSED);
-	mUniformBufferData.createDescriptorSets(mLogicalDevice, MAX_FRAMES_BEING_PROCESSED);
+	mUniformBufferData.createDescriptorSets(mLogicalDevice, mTextureImageView, mTextureSampler, MAX_FRAMES_BEING_PROCESSED);
 
 	createCommandBuffers();
 	createSyncObjects();
@@ -67,6 +75,8 @@ bool VulkanManager::cleanupVulkan()
 
 	cleanupSwapChain();
 
+	vkDestroySampler(mLogicalDevice, mTextureSampler, nullptr);
+	vkDestroyImageView(mLogicalDevice, mTextureImageView, nullptr);
 	vkDestroyImage(mLogicalDevice, mTextureImage, nullptr);
 	vkFreeMemory(mLogicalDevice, mTextureMemory, nullptr);
 
@@ -454,7 +464,8 @@ bool VulkanManager::supportsDeviceFeatures(VkPhysicalDevice device)
 
 	vkGetPhysicalDeviceFeatures2(device, &deviceFeatures);
 
-	return deviceVulkan13Features.synchronization2 && deviceVulkan13Features.dynamicRendering && deviceExtendedStateFeatures.extendedDynamicState;
+	return deviceVulkan13Features.synchronization2 && deviceVulkan13Features.dynamicRendering && 
+		deviceExtendedStateFeatures.extendedDynamicState && deviceFeatures.features.samplerAnisotropy;
 }
 
 bool VulkanManager::createLogicalDevice()
@@ -478,6 +489,7 @@ bool VulkanManager::createLogicalDevice()
 
 	VkPhysicalDeviceFeatures deviceBaseFeatures{};
 	deviceBaseFeatures.logicOp = true;
+	deviceBaseFeatures.samplerAnisotropy = VK_TRUE;
 
 	VkPhysicalDeviceFeatures2 deviceAdditFeatures{};
 	VkPhysicalDeviceVulkan13Features deviceVulkan13Features{};
@@ -723,26 +735,43 @@ bool VulkanManager::createImageViews()
 
 	for (int i = 0; i < imageCount; i++)
 	{
-		VkImageViewCreateInfo imageViewCreateInfo{};
-		imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		imageViewCreateInfo.image = mSwapChainImages[i];
-		imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		imageViewCreateInfo.format = mSwapChainImageFormat;
-		imageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-		imageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-		imageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-		imageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-		imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
-		imageViewCreateInfo.subresourceRange.levelCount = 1;
-		imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-		imageViewCreateInfo.subresourceRange.layerCount = 1;
-
-		if (vkCreateImageView(mLogicalDevice, &imageViewCreateInfo, nullptr, &mSwapChainImageViews[i]) != VK_SUCCESS)
+		if (!createImageView(mLogicalDevice, mSwapChainImages[i], &mSwapChainImageViews[i], mSwapChainImageFormat))
 		{
-			std::cout << "\nFailed to create image view..." << std::endl;
+			std::cout << "\nFailed to create swap chain image view..." << std::endl;
 			return false;
 		}
+	}
+
+	return true;
+}
+
+bool VulkanManager::createTextureSampler()
+{
+	VkPhysicalDeviceProperties physicalDeviceProperties{};
+	vkGetPhysicalDeviceProperties(mPhysicalDevice, &physicalDeviceProperties);
+
+	VkSamplerCreateInfo samplerCreateInfo{};
+	samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
+	samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
+	samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerCreateInfo.anisotropyEnable = VK_TRUE;
+	samplerCreateInfo.maxAnisotropy = physicalDeviceProperties.limits.maxSamplerAnisotropy;
+	samplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerCreateInfo.compareEnable = VK_FALSE;
+	samplerCreateInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+	samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	samplerCreateInfo.mipLodBias = 0.0f;
+	samplerCreateInfo.minLod = 0.0f;
+	samplerCreateInfo.maxLod = 0.0f;
+
+	if (vkCreateSampler(mLogicalDevice, &samplerCreateInfo, nullptr, &mTextureSampler) != VK_SUCCESS)
+	{
+		std::cout << "\nFailed to create texture sampler..." << std::endl;
+		return false;
 	}
 
 	return true;

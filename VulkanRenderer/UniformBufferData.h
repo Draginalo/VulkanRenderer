@@ -5,6 +5,7 @@
 #include "vulkan/vulkan.h"
 #include <iostream>
 #include <vector>
+#include <array>
 #include <chrono>
 
 //Uniform buffer struct for mvp matrecies with explicit alignment specefied to match shader uniform alignment
@@ -20,7 +21,7 @@ public:
 	bool createDescriptorSetLayout(VkDevice logicalDevice);
 	bool createUniformBuffers(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, int maxFramesBeingProcessed);
 	bool createDescriptorPool(VkDevice logicalDevice, int maxFramesBeingProcessed);
-	bool createDescriptorSets(VkDevice logicalDevice, int maxFramesBeingProcessed);
+	bool createDescriptorSets(VkDevice logicalDevice, VkImageView imageView, VkSampler sampler, int maxFramesBeingProcessed);
 
 	void updateUniformBuffer(int currFrame, float aspectRatio);
 	void bindDescriptorSets(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, int currFrame);

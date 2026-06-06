@@ -102,6 +102,7 @@ private:
 	void cleanupSwapChain();
 
 	bool createImageViews();
+	bool createTextureSampler();
 
 	bool createCommandPool();
 	bool createCommandBuffers();
@@ -147,6 +148,8 @@ private:
 
 	VkImage mTextureImage;
 	VkDeviceMemory mTextureMemory;
+	VkImageView mTextureImageView;
+	VkSampler mTextureSampler;
 
 	const std::vector<const char*> mValidationLayers = {
 		"VK_LAYER_KHRONOS_validation"
