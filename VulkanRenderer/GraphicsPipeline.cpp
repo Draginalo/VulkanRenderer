@@ -2,14 +2,14 @@
 #include "VertexBufferData.h"
 #include "UniformBufferData.h"
 
-std::vector<char> GraphicsPipeline::readShaderFile(const std::string& filename)
+std::vector<char> GraphicsPipeline::readShaderFile(const std::string& filepath)
 {
-	std::ifstream file(filename, std::ios::ate | std::ios::binary);
+	std::ifstream file(filepath, std::ios::ate | std::ios::binary);
 	std::vector<char> buffer = {};
 
 	if (!file.is_open())
 	{
-		std::cout << "\nFailed to open file: " << filename << std::endl;
+		std::cout << "\nFailed to open file: " << filepath << std::endl;
 		return {};
 	}
 
@@ -45,8 +45,8 @@ VkShaderModule GraphicsPipeline::createShaderModule(VkDevice logicalDevice, cons
 bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat,
 	VkFormat depthAttachmentFormat, VkDescriptorSetLayout pDescriptorSetLayout)
 {
-	std::vector<char> basicTriVertShaderCode = readShaderFile("../../../../Assets/Shaders/ByteEncoded/BasicTriangle_VS.spv");
-	std::vector<char> basicTriFragShaderCode = readShaderFile("../../../../Assets/Shaders/ByteEncoded/BasicTriangle_FS.spv");
+	std::vector<char> basicTriVertShaderCode = readShaderFile("../Assets/Shaders/ByteEncoded/BasicTriangle_VS.spv");
+	std::vector<char> basicTriFragShaderCode = readShaderFile("../Assets/Shaders/ByteEncoded/BasicTriangle_FS.spv");
 
 	VkShaderModule basicTriVertShaderModule = createShaderModule(logicalDevice, basicTriVertShaderCode);
 	VkShaderModule basicTriFragShaderModule = createShaderModule(logicalDevice, basicTriFragShaderCode);

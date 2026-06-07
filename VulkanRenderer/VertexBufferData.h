@@ -6,6 +6,9 @@
 #include <array>
 #include <iostream>
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
+
 struct Vertex {
 	glm::vec3 position;
 	glm::vec3 color;
@@ -41,7 +44,22 @@ struct Vertex {
 
 		return attributeDescriptions;
 	}
+
+	bool operator==(const Vertex& other) const
+	{
+		return position == other.position && color == other.color && texCoords == other.texCoords;
+	}
 };
+
+namespace std {
+	template<> struct hash<Vertex> {
+		size_t operator()(Vertex const& vertex) const {
+			return ((hash<glm::vec3>()(vertex.position) ^
+				(hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
+				(hash<glm::vec2>()(vertex.texCoords) << 1);
+		}
+	};
+}
 
 class VertexBufferData {
 public:
@@ -55,22 +73,8 @@ public:
 
 	void draw(VkCommandBuffer commandBuffer);
 private:
-	std::vector<Vertex> mVerticies = {
-		{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-		{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-		{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-		{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-
-		{{-6.5f, -6.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-		{{6.5f, -6.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-		{{6.5f, 6.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-		{{-6.5f, 6.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
-	};
-
-	const std::vector<uint16_t> mIndecies = {
-		0, 1, 2, 2, 3, 0,
-		4, 5, 6,6, 7, 4
-	};
+	std::vector<Vertex> mVerticies;
+	std::vector<uint32_t> mIndecies;
 
 	VkBuffer mVertexBuffer;
 	VkBuffer mIndeciesBuffer;

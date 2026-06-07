@@ -36,7 +36,7 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	createCommandPool();
 
 	createTextureImage(mLogicalDevice, mPhysicalDevice, mTextureImage, mTextureMemory, mCommandPool, mGraphicsQueue, 
-		"../Assets/Images/grr.png");
+		"../Assets/Models/Room/room.png");
 
 	if (!createImageView(mLogicalDevice, mTextureImage, &mTextureImageView, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT) != VK_SUCCESS)
 	{

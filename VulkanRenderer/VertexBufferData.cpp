@@ -1,9 +1,12 @@
 #include "VertexBufferData.h"
 #include "Helpers/BufferHelpers.h"
+#include "Helpers/ModelHelpers.h"
 
 bool VertexBufferData::createVertexBuffer(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, 
 	VkQueue submitQueue)
 {
+	loadModel("../Assets/Models/Room/room.obj", &mVerticies,  &mIndecies);
+
 	VkDeviceSize bufferSize = sizeof(mVerticies[0]) * mVerticies.size();
 
 	VkBuffer stagingBuffer;
@@ -89,7 +92,7 @@ void VertexBufferData::draw(VkCommandBuffer commandBuffer)
 	VkDeviceSize offsets[] = { 0 };
 
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
-	vkCmdBindIndexBuffer(commandBuffer, mIndeciesBuffer, 0, VK_INDEX_TYPE_UINT16);
+	vkCmdBindIndexBuffer(commandBuffer, mIndeciesBuffer, 0, VK_INDEX_TYPE_UINT32);
 
 	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(mIndecies.size()), 1, 0, 0, 0);
 }

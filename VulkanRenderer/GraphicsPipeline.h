@@ -8,7 +8,7 @@
 
 class GraphicsPipeline {
 public:
-	std::vector<char> readShaderFile(const std::string& filename);
+	std::vector<char> readShaderFile(const std::string& filepath);
 	VkShaderModule createShaderModule(VkDevice logicalDevice, const std::vector<char>& shaderByteCode);
 
 	bool createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat, 
