@@ -19,7 +19,7 @@ LINK_DIRECTORIES(${CMAKE_BINARY_DIR}/libs)
 include(${CMAKE_CURRENT_LIST_DIR}/externals/cpm.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/externals/glm.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/externals/glfw.cmake)
-include(${CMAKE_CURRENT_LIST_DIR}/externals/stb_image.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/externals/loadExternalHeaders.cmake)
 
 # Include sub-projects.
 add_subdirectory ("VulkanRenderer")
