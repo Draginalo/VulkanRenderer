@@ -35,10 +35,12 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 
 	createCommandPool();
 
+	uint32_t texMipLevels;
 	createTextureImage(mLogicalDevice, mPhysicalDevice, mTextureImage, mTextureMemory, mCommandPool, mGraphicsQueue, 
-		"../Assets/Models/Room/room.png");
+		"../Assets/Models/Room/room.png", texMipLevels);
 
-	if (!createImageView(mLogicalDevice, mTextureImage, &mTextureImageView, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT) != VK_SUCCESS)
+	if (!createImageView(mLogicalDevice, mTextureImage, &mTextureImageView, VK_FORMAT_R8G8B8A8_SRGB, 
+		VK_IMAGE_ASPECT_COLOR_BIT, texMipLevels) != VK_SUCCESS)
 	{
 		std::cout << "\nFailed to create texture image view..." << std::endl;
 		return false;
@@ -782,7 +784,8 @@ bool VulkanManager::createImageViews()
 
 	for (int i = 0; i < imageCount; i++)
 	{
-		if (!createImageView(mLogicalDevice, mSwapChainImages[i], &mSwapChainImageViews[i], mSwapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT))
+		if (!createImageView(mLogicalDevice, mSwapChainImages[i], &mSwapChainImageViews[i], mSwapChainImageFormat, 
+			VK_IMAGE_ASPECT_COLOR_BIT, 1))
 		{
 			std::cout << "\nFailed to create swap chain image view..." << std::endl;
 			return false;
@@ -813,7 +816,7 @@ bool VulkanManager::createTextureSampler()
 	samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 	samplerCreateInfo.mipLodBias = 0.0f;
 	samplerCreateInfo.minLod = 0.0f;
-	samplerCreateInfo.maxLod = 0.0f;
+	samplerCreateInfo.maxLod = VK_LOD_CLAMP_NONE;
 
 	if (vkCreateSampler(mLogicalDevice, &samplerCreateInfo, nullptr, &mTextureSampler) != VK_SUCCESS)
 	{
@@ -828,11 +831,11 @@ bool VulkanManager::createDepthResources()
 {
 	VkFormat depthFormat = findDepthFormat();
 
-	createImage(mLogicalDevice, mPhysicalDevice, mSwapChainImageExtent.width, mSwapChainImageExtent.height, depthFormat,
+	createImage(mLogicalDevice, mPhysicalDevice, mSwapChainImageExtent.width, mSwapChainImageExtent.height, 1, depthFormat,
 		VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		mDepthImage, mDepthMemory);
 
-	createImageView(mLogicalDevice, mDepthImage, &mDepthImageView, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+	createImageView(mLogicalDevice, mDepthImage, &mDepthImageView, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 
 	return true;
 }
@@ -944,12 +947,12 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 	//Transitions swap chain and depth images to the correct formats, accesses, and stages for rendering
 	transitionImageLayout(commandBuffer, mSwapChainImages[imageIndex], VK_IMAGE_LAYOUT_UNDEFINED, 
 		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_2_NONE, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_2_NONE,
-		VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_IMAGE_ASPECT_COLOR_BIT, fpCmdPipelineBarrier2);
+		VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1, fpCmdPipelineBarrier2);
 	transitionImageLayout(commandBuffer, mDepthImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
 		VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, 
 		VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
 		VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, 
-		VK_IMAGE_ASPECT_DEPTH_BIT, fpCmdPipelineBarrier2);
+		VK_IMAGE_ASPECT_DEPTH_BIT, 1, fpCmdPipelineBarrier2);
 
 	VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
 	VkClearValue clearDepth = { 1.0f, 0 };
@@ -1009,7 +1012,7 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 	transitionImageLayout(commandBuffer, mSwapChainImages[imageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
 		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_2_NONE, 
 		VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, 
-		VK_IMAGE_ASPECT_COLOR_BIT, fpCmdPipelineBarrier2);
+		VK_IMAGE_ASPECT_COLOR_BIT, 1, fpCmdPipelineBarrier2);
 
 	if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
 	{
