@@ -43,7 +43,7 @@ VkShaderModule GraphicsPipeline::createShaderModule(VkDevice logicalDevice, cons
 }
 
 bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat,
-	VkFormat depthAttachmentFormat, VkDescriptorSetLayout pDescriptorSetLayout)
+	VkFormat depthAttachmentFormat, VkDescriptorSetLayout pDescriptorSetLayout, VkSampleCountFlagBits samples)
 {
 	std::vector<char> basicTriVertShaderCode = readShaderFile("../Assets/Shaders/ByteEncoded/BasicTriangle_VS.spv");
 	std::vector<char> basicTriFragShaderCode = readShaderFile("../Assets/Shaders/ByteEncoded/BasicTriangle_FS.spv");
@@ -123,8 +123,8 @@ bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D
 	VkPipelineMultisampleStateCreateInfo multisamplingInfo{};
 	multisamplingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	multisamplingInfo.sampleShadingEnable = VK_FALSE;
-	multisamplingInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 	multisamplingInfo.minSampleShading = 1.0f;
+	multisamplingInfo.rasterizationSamples = samples;
 	multisamplingInfo.pSampleMask = nullptr;
 	multisamplingInfo.alphaToCoverageEnable = VK_FALSE;
 	multisamplingInfo.alphaToOneEnable = VK_FALSE;
@@ -218,27 +218,38 @@ bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D
 	return true;
 }
 
-bool GraphicsPipeline::createRenderPass(VkDevice logicalDevice, VkFormat colorAttachmentFormat, VkFormat depthAttachmentFormat)
+bool GraphicsPipeline::createRenderPass(VkDevice logicalDevice, VkFormat colorAttachmentFormat, VkFormat depthAttachmentFormat, 
+	VkSampleCountFlagBits samples)
 {
 	VkAttachmentDescription colorAttachment{};
 	colorAttachment.format = colorAttachmentFormat;
-	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	colorAttachment.samples = samples;
 	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentDescription depthAttachment{};
 	depthAttachment.format = depthAttachmentFormat;
-	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	depthAttachment.samples = samples;
 	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentDescription msaaResolveAttachment{};
+	msaaResolveAttachment.format = colorAttachmentFormat;
+	msaaResolveAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	msaaResolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	msaaResolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	msaaResolveAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	msaaResolveAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	msaaResolveAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	msaaResolveAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	VkAttachmentReference colorAttachmentRef{};
 	colorAttachmentRef.attachment = 0;
@@ -248,22 +259,27 @@ bool GraphicsPipeline::createRenderPass(VkDevice logicalDevice, VkFormat colorAt
 	depthAttachmentRef.attachment = 1;
 	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+	VkAttachmentReference msaaResolveAttachmentRef{};
+	msaaResolveAttachmentRef.attachment = 2;
+	msaaResolveAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
 	VkSubpassDescription subPassDescription{};
 	subPassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subPassDescription.colorAttachmentCount = 1;
 	subPassDescription.pColorAttachments = &colorAttachmentRef;
 	subPassDescription.pDepthStencilAttachment = &depthAttachmentRef;
+	subPassDescription.pResolveAttachments = &msaaResolveAttachmentRef;
 
 	//Dependencies to only allow image transitions to happen after the image has been retreived
 	VkSubpassDependency subPassDepedency{};
 	subPassDepedency.srcSubpass = VK_SUBPASS_EXTERNAL;
 	subPassDepedency.dstSubpass = 0;
 	subPassDepedency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-	subPassDepedency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	subPassDepedency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 	subPassDepedency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 	subPassDepedency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-	std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
+	std::array<VkAttachmentDescription, 3> attachments = { colorAttachment, depthAttachment, msaaResolveAttachment };
 	VkRenderPassCreateInfo renderPassCreateInfo{};
 	renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	renderPassCreateInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
@@ -294,7 +310,7 @@ void GraphicsPipeline::cleanupPipeline(VkDevice logicalDevice)
 }
 
 bool GraphicsPipeline::createFramebuffers(VkDevice logicalDevice, std::vector<VkImageView> imageViews, VkImageView depthImageView, 
-	VkExtent2D extent)
+	VkImageView msaaImageView, VkExtent2D extent)
 {
 	int imageViewCount = imageViews.size();
 
@@ -302,7 +318,7 @@ bool GraphicsPipeline::createFramebuffers(VkDevice logicalDevice, std::vector<Vk
 
 	for (int i = 0; i < imageViewCount; i++)
 	{
-		std::array<VkImageView, 2> attatchments = { imageViews[i], depthImageView };
+		std::array<VkImageView, 3> attatchments = { msaaImageView, depthImageView, imageViews[i] };
 
 		VkFramebufferCreateInfo framebufferInfo{};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;

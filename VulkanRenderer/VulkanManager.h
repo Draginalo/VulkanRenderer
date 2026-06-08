@@ -108,6 +108,7 @@ private:
 	bool createImageViews();
 	bool createTextureSampler();
 	bool createDepthResources();
+	bool createMSAA_ColorResources();
 
 	bool createCommandPool();
 	bool createCommandBuffers();
@@ -115,6 +116,8 @@ private:
 	bool recordCommandBufferDynamicRendering(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
 	bool createSyncObjects();
+
+	VkSampleCountFlagBits getMaxUsableSampleCount();
 
 	VkInstance mInstance;
 	VkDebugUtilsMessengerEXT mDebugMessanger;
@@ -159,6 +162,12 @@ private:
 	VkImage mDepthImage;
 	VkDeviceMemory mDepthMemory;
 	VkImageView mDepthImageView;
+
+	VkImage mMSAA_ColorImage;
+	VkDeviceMemory mMSAA_ColorhMemory;
+	VkImageView mMSAA_ColorImageView;
+
+	VkSampleCountFlagBits mMSAA_Samples = VK_SAMPLE_COUNT_1_BIT;
 
 	const std::vector<const char*> mValidationLayers = {
 		"VK_LAYER_KHRONOS_validation"

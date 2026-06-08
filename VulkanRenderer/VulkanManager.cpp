@@ -18,20 +18,22 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	VkFormat depthFormat = findDepthFormat();
 	if (!mGraphicsPipeline.dynamicRenderingEnabled())
 	{
-		mGraphicsPipeline.createRenderPass(mLogicalDevice, mSwapChainImageFormat, depthFormat);
+		mGraphicsPipeline.createRenderPass(mLogicalDevice, mSwapChainImageFormat, depthFormat, mMSAA_Samples);
 	}
 
 	createDepthResources();
+	createMSAA_ColorResources();
 
 	if (!mGraphicsPipeline.dynamicRenderingEnabled())
 	{
-		mGraphicsPipeline.createFramebuffers(mLogicalDevice, mSwapChainImageViews, mDepthImageView, mSwapChainImageExtent);
+		mGraphicsPipeline.createFramebuffers(mLogicalDevice, mSwapChainImageViews, mDepthImageView, mMSAA_ColorImageView, 
+			mSwapChainImageExtent);
 	}
 
 	mUniformBufferData.createDescriptorSetLayout(mLogicalDevice);
 
 	mGraphicsPipeline.createGraphicsPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, depthFormat,
-		mUniformBufferData.getDescriptorSetLayout());
+		mUniformBufferData.getDescriptorSetLayout(), mMSAA_Samples);
 
 	createCommandPool();
 
@@ -92,6 +94,10 @@ bool VulkanManager::cleanupVulkan()
 	vkDestroyImageView(mLogicalDevice, mDepthImageView, nullptr);
 	vkDestroyImage(mLogicalDevice, mDepthImage, nullptr);
 	vkFreeMemory(mLogicalDevice, mDepthMemory, nullptr);
+
+	vkDestroyImageView(mLogicalDevice, mMSAA_ColorImageView, nullptr);
+	vkDestroyImage(mLogicalDevice, mMSAA_ColorImage, nullptr);
+	vkFreeMemory(mLogicalDevice, mMSAA_ColorhMemory, nullptr);
 
 	mUniformBufferData.cleanup(mLogicalDevice);
 	mVertexBufferData.cleanupBuffers(mLogicalDevice);
@@ -370,6 +376,7 @@ bool VulkanManager::pickPhysicalDevice()
 		if (deviceIsSuitable(currDevice))
 		{
 			mPhysicalDevice = currDevice;
+			mMSAA_Samples = getMaxUsableSampleCount();
 			return true;
 		}
 	}
@@ -753,13 +760,18 @@ bool VulkanManager::recreateSwapChain(GLFWwindow* window)
 	vkDestroyImage(mLogicalDevice, mDepthImage, nullptr);
 	vkFreeMemory(mLogicalDevice, mDepthMemory, nullptr);
 
+	vkDestroyImageView(mLogicalDevice, mMSAA_ColorImageView, nullptr);
+	vkDestroyImage(mLogicalDevice, mMSAA_ColorImage, nullptr);
+	vkFreeMemory(mLogicalDevice, mMSAA_ColorhMemory, nullptr);
+
 	createSwapChain(window);
 	createImageViews();
+	createMSAA_ColorResources();
 	createDepthResources();
 
 	if (!mGraphicsPipeline.dynamicRenderingEnabled())
 	{
-		mGraphicsPipeline.createFramebuffers(mLogicalDevice, mSwapChainImageViews, mDepthImageView, mSwapChainImageExtent);
+		mGraphicsPipeline.createFramebuffers(mLogicalDevice, mSwapChainImageViews, mDepthImageView, mMSAA_ColorImageView, mSwapChainImageExtent);
 	}
 
 	return false;
@@ -831,11 +843,24 @@ bool VulkanManager::createDepthResources()
 {
 	VkFormat depthFormat = findDepthFormat();
 
-	createImage(mLogicalDevice, mPhysicalDevice, mSwapChainImageExtent.width, mSwapChainImageExtent.height, 1, depthFormat,
-		VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		mDepthImage, mDepthMemory);
+	if (!createImage(mLogicalDevice, mPhysicalDevice, mSwapChainImageExtent.width, mSwapChainImageExtent.height, 1, mMSAA_Samples, 
+		depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		mDepthImage, mDepthMemory)) { return false; }
 
-	createImageView(mLogicalDevice, mDepthImage, &mDepthImageView, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
+	if (!createImageView(mLogicalDevice, mDepthImage, &mDepthImageView, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1)) { return false; }
+
+	return true;
+}
+
+bool VulkanManager::createMSAA_ColorResources()
+{
+	if (!createImage(mLogicalDevice, mPhysicalDevice, mSwapChainImageExtent.width, mSwapChainImageExtent.height, 1, 
+		mMSAA_Samples, mSwapChainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | 
+		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mMSAA_ColorImage, mMSAA_ColorhMemory)) 
+		{ return false; }
+
+	if (!createImageView(mLogicalDevice, mMSAA_ColorImage, &mMSAA_ColorImageView, mSwapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1)) 
+	{ return false; }
 
 	return true;
 }
@@ -944,10 +969,18 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 		return false;
 	}
 
-	//Transitions swap chain and depth images to the correct formats, accesses, and stages for rendering
-	transitionImageLayout(commandBuffer, mSwapChainImages[imageIndex], VK_IMAGE_LAYOUT_UNDEFINED, 
+	//Transitions swap chain correct formats, accesses, and stages for rendering (as resolve attachment for msaa)
+	transitionImageLayout(commandBuffer, mSwapChainImages[imageIndex], VK_IMAGE_LAYOUT_UNDEFINED,
 		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_2_NONE, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_2_NONE,
 		VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1, fpCmdPipelineBarrier2);
+	
+	//Transitions multisampling color attachment formats, accesses, and stages for multisample rendering
+	transitionImageLayout(commandBuffer, mMSAA_ColorImage, VK_IMAGE_LAYOUT_UNDEFINED,
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_2_NONE, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | 
+		VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT, VK_PIPELINE_STAGE_2_NONE, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 
+		VK_IMAGE_ASPECT_COLOR_BIT, 1, fpCmdPipelineBarrier2);
+
+	//Transitions depth attachment formats, accesses, and stages for multisample rendering
 	transitionImageLayout(commandBuffer, mDepthImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
 		VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, 
 		VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
@@ -962,8 +995,10 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 	colorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	colorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	colorAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	colorAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	colorAttachmentInfo.imageView = mSwapChainImageViews[imageIndex];
+	colorAttachmentInfo.imageView = mMSAA_ColorImageView;
+	colorAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	colorAttachmentInfo.resolveImageView = mSwapChainImageViews[imageIndex];
+	colorAttachmentInfo.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
 
 	VkRenderingAttachmentInfoKHR depthAttachmentInfo{};
 	depthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
@@ -973,6 +1008,8 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 	depthAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	depthAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 	depthAttachmentInfo.imageView = mDepthImageView;
+
+	//std::array<VkRenderingAttachmentInfoKHR, 1> colorAttachments = { colorAttachmentInfo };
 
 	VkRenderingInfoKHR renderingInfo{};
 	renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
@@ -1060,6 +1097,23 @@ bool VulkanManager::createSyncObjects()
 	}
 
 	return true;
+}
+
+VkSampleCountFlagBits VulkanManager::getMaxUsableSampleCount()
+{
+	VkPhysicalDeviceProperties props{};
+	vkGetPhysicalDeviceProperties(mPhysicalDevice, &props);
+
+	VkSampleCountFlags count = props.limits.framebufferColorSampleCounts & props.limits.sampledImageDepthSampleCounts;
+
+	if (count & VK_SAMPLE_COUNT_64_BIT) { return VK_SAMPLE_COUNT_64_BIT; }
+	if (count & VK_SAMPLE_COUNT_32_BIT) { return VK_SAMPLE_COUNT_32_BIT; }
+	if (count & VK_SAMPLE_COUNT_16_BIT) { return VK_SAMPLE_COUNT_16_BIT; }
+	if (count & VK_SAMPLE_COUNT_8_BIT) { return VK_SAMPLE_COUNT_8_BIT; }
+	if (count & VK_SAMPLE_COUNT_4_BIT) { return VK_SAMPLE_COUNT_4_BIT; }
+	if (count & VK_SAMPLE_COUNT_2_BIT) { return VK_SAMPLE_COUNT_2_BIT; }
+
+	return VK_SAMPLE_COUNT_1_BIT;
 }
 
 void VulkanManager::markFramebuffersResized()

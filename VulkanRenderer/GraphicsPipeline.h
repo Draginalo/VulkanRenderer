@@ -12,12 +12,13 @@ public:
 	VkShaderModule createShaderModule(VkDevice logicalDevice, const std::vector<char>& shaderByteCode);
 
 	bool createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat, 
-		VkFormat depthAttachmentFormat, VkDescriptorSetLayout pDescriptorSetLayout);
-	bool createRenderPass(VkDevice logicalDevice, VkFormat colorAttachmentFormat, VkFormat depthAttachmentFormat);
+		VkFormat depthAttachmentFormat, VkDescriptorSetLayout pDescriptorSetLayout, VkSampleCountFlagBits samples);
+	bool createRenderPass(VkDevice logicalDevice, VkFormat colorAttachmentFormat, VkFormat depthAttachmentFormat,
+		VkSampleCountFlagBits samples);
 
 	void cleanupPipeline(VkDevice logicalDevice);
 	bool createFramebuffers(VkDevice logicalDevice, std::vector<VkImageView> imageViews, VkImageView depthImageView, 
-		VkExtent2D extent);
+		VkImageView msaaImageView, VkExtent2D extent);
 	void cleanupFrambuffers(VkDevice logicalDevice);
 
 	VkRenderPassBeginInfo getRenderPassBeginInfo(uint32_t framebufferIndex, VkExtent2D renderPassExtent, 
