@@ -1,8 +1,8 @@
-#include "GraphicsPipeline.h"
+#include "PipelineData.h"
 #include "VertexBufferData.h"
 #include "UniformBufferData.h"
 
-std::vector<char> GraphicsPipeline::readShaderFile(const std::string& filepath)
+std::vector<char> PipelineData::readShaderFile(const std::string& filepath)
 {
 	std::ifstream file(filepath, std::ios::ate | std::ios::binary);
 	std::vector<char> buffer = {};
@@ -24,7 +24,7 @@ std::vector<char> GraphicsPipeline::readShaderFile(const std::string& filepath)
 	return buffer;
 }
 
-VkShaderModule GraphicsPipeline::createShaderModule(VkDevice logicalDevice, const std::vector<char>& shaderByteCode)
+VkShaderModule PipelineData::createShaderModule(VkDevice logicalDevice, const std::vector<char>& shaderByteCode)
 {
 	VkShaderModuleCreateInfo shaderModuleCreateInfo{};
 	shaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -42,7 +42,7 @@ VkShaderModule GraphicsPipeline::createShaderModule(VkDevice logicalDevice, cons
 	return shaderModule;
 }
 
-bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat,
+bool PipelineData::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat,
 	VkFormat depthAttachmentFormat, VkDescriptorSetLayout descriptorSetLayout, VkSampleCountFlagBits samples, bool renderingParticles)
 {
 	std::vector<char> vertShaderCode;
@@ -247,7 +247,7 @@ bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D
 	return true;
 }
 
-bool GraphicsPipeline::createRenderPass(VkDevice logicalDevice, VkFormat colorAttachmentFormat, VkFormat depthAttachmentFormat, 
+bool PipelineData::createRenderPass(VkDevice logicalDevice, VkFormat colorAttachmentFormat, VkFormat depthAttachmentFormat, 
 	VkSampleCountFlagBits samples)
 {
 	VkAttachmentDescription colorAttachment{};
@@ -327,7 +327,7 @@ bool GraphicsPipeline::createRenderPass(VkDevice logicalDevice, VkFormat colorAt
 	return true;
 }
 
-void GraphicsPipeline::cleanupPipeline(VkDevice logicalDevice)
+void PipelineData::cleanupPipeline(VkDevice logicalDevice)
 {
 	vkDestroyPipeline(logicalDevice, mGraphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(logicalDevice, mGraphicsPipelineLayout, nullptr);
@@ -341,7 +341,7 @@ void GraphicsPipeline::cleanupPipeline(VkDevice logicalDevice)
 	vkDestroyPipelineLayout(logicalDevice, mComputePipelineLayout, nullptr);
 }
 
-bool GraphicsPipeline::createFramebuffers(VkDevice logicalDevice, std::vector<VkImageView> imageViews, VkImageView depthImageView, 
+bool PipelineData::createFramebuffers(VkDevice logicalDevice, std::vector<VkImageView> imageViews, VkImageView depthImageView, 
 	VkImageView msaaImageView, VkExtent2D extent)
 {
 	int imageViewCount = imageViews.size();
@@ -371,7 +371,7 @@ bool GraphicsPipeline::createFramebuffers(VkDevice logicalDevice, std::vector<Vk
 	return true;
 }
 
-void GraphicsPipeline::cleanupFrambuffers(VkDevice logicalDevice)
+void PipelineData::cleanupFrambuffers(VkDevice logicalDevice)
 {
 	for (VkFramebuffer framebuffer : mFramebuffers)
 	{
@@ -379,7 +379,7 @@ void GraphicsPipeline::cleanupFrambuffers(VkDevice logicalDevice)
 	}
 }
 
-VkRenderPassBeginInfo GraphicsPipeline::getRenderPassBeginInfo(uint32_t framebufferIndex, VkExtent2D renderPassExtent,
+VkRenderPassBeginInfo PipelineData::getRenderPassBeginInfo(uint32_t framebufferIndex, VkExtent2D renderPassExtent,
 	std::array<VkClearValue, 2> clearValues)
 {
 	VkRenderPassBeginInfo renderPassBeginInfo{};
@@ -394,7 +394,7 @@ VkRenderPassBeginInfo GraphicsPipeline::getRenderPassBeginInfo(uint32_t framebuf
 	return renderPassBeginInfo;
 }
 
-bool GraphicsPipeline::createComputePipeline(VkDevice logicalDevice, VkDescriptorSetLayout descriptorSetLayout)
+bool PipelineData::createComputePipeline(VkDevice logicalDevice, VkDescriptorSetLayout descriptorSetLayout)
 {
 	VkPipelineLayoutCreateInfo layoutInfo{};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

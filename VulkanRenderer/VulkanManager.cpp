@@ -1,4 +1,5 @@
 ﻿#include "VulkanManager.h"
+#include "Helpers/BufferHelpers.h"
 
 bool VulkanManager::initVulkan(GLFWwindow* window)
 {
@@ -68,6 +69,82 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	registerExtensionFunctions(mInstance);
 
 	return false;
+}
+
+void VulkanManager::initImGui(GLFWwindow* window)
+{
+	std::vector<VkDescriptorPoolSize> poolSizes =
+	{
+		{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
+	};
+
+	VkDescriptorPoolCreateInfo poolCreateInfo{};
+	poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+	poolCreateInfo.maxSets = 1000;
+	poolCreateInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+	poolCreateInfo.pPoolSizes = poolSizes.data();
+
+	if (vkCreateDescriptorPool(mLogicalDevice, &poolCreateInfo, nullptr, &mImGuiDescriptorPool) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to make ImGui descriptor pool...");
+	}
+
+	ImGui::CreateContext();
+
+	int width, height;
+	glfwGetFramebufferSize(window, &width, &height);
+
+	ImGuiIO& io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableSetMousePos;
+	io.DisplaySize.x = (float)width;
+	io.DisplaySize.y = (float)height;
+
+	ImGui_ImplGlfw_InitForVulkan(window, true);
+
+	SwapChainSupportDetails swapChainSupportDetails = querySwapChainSupport(mPhysicalDevice);
+
+	VkSurfaceFormatKHR swapFormat = chooseSwapSurfaceFormat(swapChainSupportDetails.formats);
+	VkPresentModeKHR swapPresentMode = chooseSwapPresentMode(swapChainSupportDetails.presentModes);
+	VkExtent2D swapExtents = chooseSwapExtent(swapChainSupportDetails.capabilities, window);
+
+	uint32_t imageCount = swapChainSupportDetails.capabilities.minImageCount + 1;
+	if (swapChainSupportDetails.capabilities.maxImageCount > 0 && imageCount > swapChainSupportDetails.capabilities.maxImageCount)
+	{
+		imageCount = swapChainSupportDetails.capabilities.maxImageCount;
+	}
+
+	ImGui_ImplVulkan_PipelineInfo pipelineInfo{};
+	pipelineInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+	pipelineInfo.PipelineRenderingCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
+	pipelineInfo.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
+	pipelineInfo.PipelineRenderingCreateInfo.pColorAttachmentFormats = &mSwapChainImageFormat;
+	pipelineInfo.PipelineRenderingCreateInfo.depthAttachmentFormat = findDepthFormat();
+	pipelineInfo.MSAASamples = mMSAA_Samples;
+
+	ImGui_ImplVulkan_InitInfo initInfo = {};
+	initInfo.Instance = mInstance;
+	initInfo.PhysicalDevice = mPhysicalDevice;
+	initInfo.Device = mLogicalDevice;
+	initInfo.Queue = mGraphicsQueue;
+	initInfo.DescriptorPool = mImGuiDescriptorPool;
+	initInfo.MinImageCount = swapChainSupportDetails.capabilities.minImageCount;
+	initInfo.ImageCount = imageCount;
+	initInfo.UseDynamicRendering = VK_TRUE;
+	initInfo.PipelineInfoMain = pipelineInfo;
+
+	ImGui_ImplVulkan_Init(&initInfo);
 }
 
 bool VulkanManager::cleanupVulkan()
@@ -989,7 +1066,15 @@ bool VulkanManager::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t 
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
 	mUniformBufferData.bindGraphicsDescriptorSets(commandBuffer, mGraphicsPipeline.getGraphicsPipelineLayout(), mCurrentFrame);
-	mVertexBufferData.draw(commandBuffer);
+	
+	if (mRenderingParticles)
+	{
+		mUniformBufferData.bindSSBOs(commandBuffer, mCurrentFrame, PARTICLE_COUNT);
+	}
+	else 
+	{
+		mVertexBufferData.draw(commandBuffer);
+	}
 
 	vkCmdEndRenderPass(commandBuffer);
 
@@ -1103,13 +1188,14 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 		mVertexBufferData.draw(commandBuffer);
 	}
 
-
 	fpCmdEndRenderingKHR(commandBuffer);
 
+	handleGUI(mGraphicsCommandBuffers[mCurrentFrame], imageIndex);
+
 	//Transitions swap chain image to the correct formats, accesses, and stages for presenting
-	transitionImageLayout(commandBuffer, mSwapChainImages[imageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
-		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_2_NONE, 
-		VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, 
+	transitionImageLayout(commandBuffer, mSwapChainImages[imageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_2_NONE,
+		VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
 		VK_IMAGE_ASPECT_COLOR_BIT, 1, fpCmdPipelineBarrier2);
 
 	if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
@@ -1195,6 +1281,73 @@ bool VulkanManager::createSyncObjects()
 
 
 	return true;
+}
+
+void VulkanManager::handleGUI(VkCommandBuffer commandBuffer, int imageIndex)
+{
+	ImGui_ImplVulkan_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
+
+	ImGui::NewFrame();
+
+	ImGui::ShowDemoWindow();
+
+	ImGui::Begin("DEBUG");
+
+	ImGui::Checkbox("Render Particles", &mRenderingParticles);
+
+	ImGui::End();
+
+	ImGui::Render();
+
+
+	VkCommandBufferBeginInfo beginCommandBuffInfo{};
+	beginCommandBuffInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginCommandBuffInfo.flags = 0;
+	beginCommandBuffInfo.pInheritanceInfo = nullptr;
+
+	VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
+	VkRenderingAttachmentInfoKHR colorAttachmentInfo{};
+	colorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+	colorAttachmentInfo.clearValue = clearColor;
+	colorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+	colorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	colorAttachmentInfo.imageView = mSwapChainImageViews[imageIndex];
+
+	//Adds resolve image information if using MSAA
+	if (mMSAA_Samples != VK_SAMPLE_COUNT_1_BIT)
+	{
+		colorAttachmentInfo.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
+		colorAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		colorAttachmentInfo.resolveImageView = mSwapChainImageViews[imageIndex];
+		colorAttachmentInfo.imageView = mMSAA_ColorImageView;
+	}
+
+	//std::array<VkRenderingAttachmentInfoKHR, 1> colorAttachments = { colorAttachmentInfo };
+
+	VkRenderingInfoKHR renderingInfo{};
+	renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
+	renderingInfo.colorAttachmentCount = 1;
+	renderingInfo.pColorAttachments = &colorAttachmentInfo;
+	renderingInfo.renderArea.offset = { 0, 0 };
+	renderingInfo.renderArea.extent = mSwapChainImageExtent;
+	renderingInfo.layerCount = 1;
+
+	fpCmdBeginRenderingKHR(commandBuffer, &renderingInfo);
+
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer, VK_NULL_HANDLE);
+
+	fpCmdEndRenderingKHR(commandBuffer);
+}
+
+void VulkanManager::cleanupGUI()
+{
+	vkDeviceWaitIdle(mLogicalDevice);
+
+	ImGui_ImplVulkan_Shutdown();
+
+	vkDestroyDescriptorPool(mLogicalDevice, mImGuiDescriptorPool, nullptr);
 }
 
 VkSampleCountFlagBits VulkanManager::getMaxUsableSampleCount()

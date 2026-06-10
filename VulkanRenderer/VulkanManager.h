@@ -9,13 +9,18 @@
 #include <glm/mat4x4.hpp>
 #include "vulkan/vulkan.h"
 
+#define IMGUI_DEFINE_MATH_OPERATORS
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_vulkan.h>
+
 #include <iostream>
 #include <vector>
 #include <set>
 #include <algorithm>
 #include <string>
 
-#include "GraphicsPipeline.h"
+#include "PipelineData.h"
 #include "VertexBufferData.h"
 #include "UniformBufferData.h"
 #include "Helpers/TextureImageHelpers.h"
@@ -66,9 +71,12 @@ struct SwapChainSupportDetails
 class VulkanManager {
 public:
 	bool initVulkan(GLFWwindow* window);
+	void initImGui(GLFWwindow* window);
 	bool cleanupVulkan();
 	bool drawFrame(GLFWwindow* window, float dt);
 	void markFramebuffersResized();
+	void handleGUI(VkCommandBuffer commandBuffer, int imageIndex);
+	void cleanupGUI();
 private:
 	bool createInstance();
 
@@ -139,7 +147,7 @@ private:
 	VkFormat mSwapChainImageFormat;
 	VkExtent2D mSwapChainImageExtent;
 
-	GraphicsPipeline mGraphicsPipeline;
+	PipelineData mGraphicsPipeline;
 	VertexBufferData mVertexBufferData;
 	UniformBufferData mUniformBufferData;
 
@@ -157,7 +165,7 @@ private:
 	const int MAX_FRAMES_BEING_PROCESSED = 2;
 	const int PARTICLE_COUNT = 256000;
 	uint32_t mCurrentFrame = 0;
-	bool mRenderingParticles = true;
+	bool mRenderingParticles = false;
 
 	bool mFramebuffersResized = false;
 
@@ -179,6 +187,8 @@ private:
 	VkImageView mMSAA_ColorImageView;
 
 	VkSampleCountFlagBits mMSAA_Samples = VK_SAMPLE_COUNT_1_BIT;
+
+	VkDescriptorPool mImGuiDescriptorPool;
 
 	const std::vector<const char*> mValidationLayers = {
 		"VK_LAYER_KHRONOS_validation"

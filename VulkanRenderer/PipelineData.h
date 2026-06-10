@@ -6,7 +6,7 @@
 #include <fstream>
 #include <vector>
 
-class GraphicsPipeline {
+class PipelineData {
 public:
 	std::vector<char> readShaderFile(const std::string& filepath);
 	VkShaderModule createShaderModule(VkDevice logicalDevice, const std::vector<char>& shaderByteCode);
