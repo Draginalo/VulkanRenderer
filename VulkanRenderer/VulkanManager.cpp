@@ -31,9 +31,11 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	}
 
 	mUniformBufferData.createDescriptorSetLayout(mLogicalDevice);
+	mUniformBufferData.createComputeDescriptorSetLayout(mLogicalDevice);
 
 	mGraphicsPipeline.createGraphicsPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, depthFormat,
-		mUniformBufferData.getDescriptorSetLayout(), mMSAA_Samples);
+		mUniformBufferData.getDescriptorSetLayout(), mMSAA_Samples, mRenderingParticles);
+	mGraphicsPipeline.createComputePipeline(mLogicalDevice, mUniformBufferData.getComputeDescriptorSetLayout());
 
 	createCommandPool();
 
@@ -52,10 +54,14 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 
 	mVertexBufferData.createVertexBuffer(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue);
 	mVertexBufferData.createIndeciesBuffer(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue);
+
+	mUniformBufferData.createSSBOs(mLogicalDevice, mPhysicalDevice, MAX_FRAMES_BEING_PROCESSED, PARTICLE_COUNT,
+		mSwapChainImageExtent.height / (float)mSwapChainImageExtent.width, mCommandPool, mGraphicsQueue);
 	mUniformBufferData.createUniformBuffers(mLogicalDevice, mPhysicalDevice, MAX_FRAMES_BEING_PROCESSED);
 
 	mUniformBufferData.createDescriptorPool(mLogicalDevice, MAX_FRAMES_BEING_PROCESSED);
 	mUniformBufferData.createDescriptorSets(mLogicalDevice, mTextureImageView, mTextureSampler, MAX_FRAMES_BEING_PROCESSED);
+	mUniformBufferData.createComputeDescriptorSets(mLogicalDevice, MAX_FRAMES_BEING_PROCESSED, PARTICLE_COUNT);
 
 	createCommandBuffers();
 	createSyncObjects();
@@ -75,6 +81,9 @@ bool VulkanManager::cleanupVulkan()
 	{
 		vkDestroySemaphore(mLogicalDevice, mImageAvailableSemaphores[i], nullptr);
 		vkDestroyFence(mLogicalDevice, mWhileRenderingFences[i], nullptr);
+
+		vkDestroySemaphore(mLogicalDevice, mComputeFinishedSemaphores[i], nullptr);
+		vkDestroyFence(mLogicalDevice, mWhileComputingFences[i], nullptr);
 	}
 
 	for (size_t i = 0; i < numSwapChainImages; i++)
@@ -118,8 +127,33 @@ bool VulkanManager::cleanupVulkan()
 	return false;
 }
 
-bool VulkanManager::drawFrame(GLFWwindow* window)
+bool VulkanManager::drawFrame(GLFWwindow* window, float dt)
 {
+	VkSubmitInfo submitInfo{};
+
+	//CPU waits until fence has been signaled by GPU (compute done from previous frame)
+	vkWaitForFences(mLogicalDevice, 1, &mWhileComputingFences[mCurrentFrame], VK_TRUE, UINT64_MAX);
+
+	mUniformBufferData.updateUniformBuffer(mCurrentFrame, mSwapChainImageExtent.width / (float)mSwapChainImageExtent.height, dt);
+
+	vkResetFences(mLogicalDevice, 1, &mWhileComputingFences[mCurrentFrame]);
+	vkResetCommandBuffer(mComputeCommandBuffers[mCurrentFrame], 0);
+
+	recordComputeCommandBuffer(mComputeCommandBuffers[mCurrentFrame]);
+
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &mComputeCommandBuffers[mCurrentFrame];
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &mComputeFinishedSemaphores[mCurrentFrame];
+
+	if (vkQueueSubmit(mComputeQueue, 1, &submitInfo, mWhileComputingFences[mCurrentFrame]) != VK_SUCCESS)
+	{
+		std::cout << "Failed to submit command buffer to compute queue..." << std::endl;
+		return false;
+	}
+
+	//CPU waits until fence has been signaled by GPU (rendering done from previous frame)
 	vkWaitForFences(mLogicalDevice, 1, &mWhileRenderingFences[mCurrentFrame], VK_TRUE, UINT64_MAX);
 
 	uint32_t imageIndex;
@@ -139,33 +173,28 @@ bool VulkanManager::drawFrame(GLFWwindow* window)
 
 	//Resets fence only if image has been aquired
 	vkResetFences(mLogicalDevice, 1, &mWhileRenderingFences[mCurrentFrame]);
-
-	vkResetCommandBuffer(mCommandBuffers[mCurrentFrame], 0);
+	vkResetCommandBuffer(mGraphicsCommandBuffers[mCurrentFrame], 0);
 
 	if (mGraphicsPipeline.dynamicRenderingEnabled()) 
 	{
-		recordCommandBufferDynamicRendering(mCommandBuffers[mCurrentFrame], imageIndex);
+		recordCommandBufferDynamicRendering(mGraphicsCommandBuffers[mCurrentFrame], imageIndex);
 	}
 	else 
 	{
-		recordCommandBuffer(mCommandBuffers[mCurrentFrame], imageIndex);
+		recordCommandBuffer(mGraphicsCommandBuffers[mCurrentFrame], imageIndex);
 	}
 
-	mUniformBufferData.updateUniformBuffer(mCurrentFrame, mSwapChainImageExtent.width / (float)mSwapChainImageExtent.height);
+	VkSemaphore waitSemaphores[] = { mComputeFinishedSemaphores[mCurrentFrame], mImageAvailableSemaphores[mCurrentFrame]};
+	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
-	VkSubmitInfo submitInfo{};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-	VkSemaphore waitSemaphores[] = {mImageAvailableSemaphores[mCurrentFrame] };
-	VkSemaphore finishedRenderingSemaphores[] = {mRenderFinishedSemaphores[imageIndex] };
-	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.waitSemaphoreCount = 2;
 	submitInfo.pWaitSemaphores = waitSemaphores;
 	submitInfo.pWaitDstStageMask = waitStages;
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &mCommandBuffers[mCurrentFrame];
+	submitInfo.pCommandBuffers = &mGraphicsCommandBuffers[mCurrentFrame];
 	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = finishedRenderingSemaphores;
+	submitInfo.pSignalSemaphores = &mRenderFinishedSemaphores[imageIndex];
 
 	if (vkQueueSubmit(mGraphicsQueue, 1, &submitInfo, mWhileRenderingFences[mCurrentFrame]) != VK_SUCCESS)
 	{
@@ -175,7 +204,7 @@ bool VulkanManager::drawFrame(GLFWwindow* window)
 	VkPresentInfoKHR presentInfo{};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = finishedRenderingSemaphores;
+	presentInfo.pWaitSemaphores = &mRenderFinishedSemaphores[imageIndex];
 
 	VkSwapchainKHR swapChains[] = { mSwapChain };
 	presentInfo.swapchainCount = 1;
@@ -422,9 +451,11 @@ QueueFamiliesIndexStore VulkanManager::findSuitableQueueFamilies(VkPhysicalDevic
 	//Checks for graphics support
 	for (VkQueueFamilyProperties queueProperty : queueProperties)
 	{
-		if (queueProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT) 
+		//Not using an asyncronous compute queue
+		if ((queueProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT) && (queueProperty.queueFlags & VK_QUEUE_COMPUTE_BIT))
 		{
 			queueIndexInfo.graphicsFamalyIndex = i;
+			queueIndexInfo.computeFamalyIndex = i;
 		}
 
 		VkBool32 presentSupported = VK_FALSE;
@@ -585,6 +616,7 @@ bool VulkanManager::createLogicalDevice()
 	}
 
 	vkGetDeviceQueue(mLogicalDevice, queueFamilyIndeciesInfo.graphicsFamalyIndex, 0, &mGraphicsQueue);
+	vkGetDeviceQueue(mLogicalDevice, queueFamilyIndeciesInfo.computeFamalyIndex, 0, &mComputeQueue);
 	vkGetDeviceQueue(mLogicalDevice, queueFamilyIndeciesInfo.presentFamalyIndex, 0, &mPresentQueue);
 
 	return true;
@@ -885,7 +917,7 @@ bool VulkanManager::createCommandPool()
 
 bool VulkanManager::createCommandBuffers()
 {
-	mCommandBuffers.resize(MAX_FRAMES_BEING_PROCESSED);
+	mGraphicsCommandBuffers.resize(MAX_FRAMES_BEING_PROCESSED);
 
 	VkCommandBufferAllocateInfo commandBufAllocateInfo{};
 	commandBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -893,9 +925,23 @@ bool VulkanManager::createCommandBuffers()
 	commandBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	commandBufAllocateInfo.commandBufferCount = (uint32_t)MAX_FRAMES_BEING_PROCESSED;
 
-	if (vkAllocateCommandBuffers(mLogicalDevice, &commandBufAllocateInfo, mCommandBuffers.data()) != VK_SUCCESS)
+	if (vkAllocateCommandBuffers(mLogicalDevice, &commandBufAllocateInfo, mGraphicsCommandBuffers.data()) != VK_SUCCESS)
 	{
-		std::cout << "\nFailed to allocate command buffer..." << std::endl;
+		std::cout << "\nFailed to allocate graphics command buffers..." << std::endl;
+		return false;
+	}
+
+	mComputeCommandBuffers.resize(MAX_FRAMES_BEING_PROCESSED);
+
+	commandBufAllocateInfo = {};
+	commandBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	commandBufAllocateInfo.commandPool = mCommandPool;
+	commandBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	commandBufAllocateInfo.commandBufferCount = (uint32_t)MAX_FRAMES_BEING_PROCESSED;
+
+	if (vkAllocateCommandBuffers(mLogicalDevice, &commandBufAllocateInfo, mComputeCommandBuffers.data()) != VK_SUCCESS)
+	{
+		std::cout << "\nFailed to allocate compute command buffers..." << std::endl;
 		return false;
 	}
 
@@ -924,7 +970,7 @@ bool VulkanManager::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t 
 
 	vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mGraphicsPipeline.getPipeline());
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mGraphicsPipeline.getGraphicsPipeline());
 
 	VkViewport viewport{};
 	viewport.x = 0.0f;
@@ -942,7 +988,7 @@ bool VulkanManager::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t 
 
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-	mUniformBufferData.bindDescriptorSets(commandBuffer, mGraphicsPipeline.getPipelineLayout(), mCurrentFrame);
+	mUniformBufferData.bindGraphicsDescriptorSets(commandBuffer, mGraphicsPipeline.getGraphicsPipelineLayout(), mCurrentFrame);
 	mVertexBufferData.draw(commandBuffer);
 
 	vkCmdEndRenderPass(commandBuffer);
@@ -995,10 +1041,16 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 	colorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	colorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	colorAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	colorAttachmentInfo.imageView = mMSAA_ColorImageView;
-	colorAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	colorAttachmentInfo.resolveImageView = mSwapChainImageViews[imageIndex];
-	colorAttachmentInfo.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
+	colorAttachmentInfo.imageView = mSwapChainImageViews[imageIndex];
+
+	//Adds resolve image information if using MSAA
+	if (mMSAA_Samples != VK_SAMPLE_COUNT_1_BIT)
+	{
+		colorAttachmentInfo.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
+		colorAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		colorAttachmentInfo.resolveImageView = mSwapChainImageViews[imageIndex];
+		colorAttachmentInfo.imageView = mMSAA_ColorImageView;
+	}
 
 	VkRenderingAttachmentInfoKHR depthAttachmentInfo{};
 	depthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
@@ -1022,7 +1074,7 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 
 	fpCmdBeginRenderingKHR(commandBuffer, &renderingInfo);
 
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mGraphicsPipeline.getPipeline());
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mGraphicsPipeline.getGraphicsPipeline());
 
 	VkViewport viewport{};
 	viewport.x = 0.0f;
@@ -1040,8 +1092,17 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-	mUniformBufferData.bindDescriptorSets(commandBuffer, mGraphicsPipeline.getPipelineLayout(), mCurrentFrame);
-	mVertexBufferData.draw(commandBuffer);
+	mUniformBufferData.bindGraphicsDescriptorSets(commandBuffer, mGraphicsPipeline.getGraphicsPipelineLayout(), mCurrentFrame);
+	
+	if (mRenderingParticles)
+	{
+		mUniformBufferData.bindSSBOs(commandBuffer, mCurrentFrame, PARTICLE_COUNT);
+	}
+	else 
+	{
+		mVertexBufferData.draw(commandBuffer);
+	}
+
 
 	fpCmdEndRenderingKHR(commandBuffer);
 
@@ -1060,12 +1121,40 @@ bool VulkanManager::recordCommandBufferDynamicRendering(VkCommandBuffer commandB
 	return false;
 }
 
+bool VulkanManager::recordComputeCommandBuffer(VkCommandBuffer commandBuffer)
+{
+	VkCommandBufferBeginInfo beginCommandBuffInfo{};
+	beginCommandBuffInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+	if (vkBeginCommandBuffer(commandBuffer, &beginCommandBuffInfo) != VK_SUCCESS)
+	{
+		std::cout << "\nFailed to begin recording compute command buffer..." << std::endl;
+		return false;
+	}
+
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, mGraphicsPipeline.getComputePipeline());
+	mUniformBufferData.bindComputeDescriptorSets(commandBuffer, mGraphicsPipeline.getComputePipelineLayout(), mCurrentFrame);
+
+	vkCmdDispatch(commandBuffer, PARTICLE_COUNT / 256, 1, 1);
+
+	if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+	{
+		std::cout << "\nFailed to end compute command buffer recording..." << std::endl;
+		return false;
+	}
+
+	return true;
+}
+
 bool VulkanManager::createSyncObjects()
 {
 	int numSwapChainImages = mSwapChainImages.size();
 
 	mImageAvailableSemaphores.resize(MAX_FRAMES_BEING_PROCESSED);
 	mWhileRenderingFences.resize(MAX_FRAMES_BEING_PROCESSED);
+
+	mComputeFinishedSemaphores.resize(MAX_FRAMES_BEING_PROCESSED);
+	mWhileComputingFences.resize(MAX_FRAMES_BEING_PROCESSED);
 
 	//This is to stop unsafe reusage of semaphores: https://docs.vulkan.org/guide/latest/swapchain_semaphore_reuse.html
 	mRenderFinishedSemaphores.resize(numSwapChainImages);
@@ -1085,6 +1174,13 @@ bool VulkanManager::createSyncObjects()
 			std::cout << "\nFailed to create semaphores or fence..." << std::endl;
 			return false;
 		}
+
+		if (vkCreateSemaphore(mLogicalDevice, &semaphoreCreateInfo, nullptr, &mComputeFinishedSemaphores[i]) != VK_SUCCESS
+			|| vkCreateFence(mLogicalDevice, &fenceCreateInfo, nullptr, &mWhileComputingFences[i]) != VK_SUCCESS)
+		{
+			std::cout << "\nFailed to create semaphores or fence..." << std::endl;
+			return false;
+		}
 	}
 
 	for (size_t i = 0; i < numSwapChainImages; i++)
@@ -1095,6 +1191,8 @@ bool VulkanManager::createSyncObjects()
 			return false;
 		}
 	}
+
+
 
 	return true;
 }

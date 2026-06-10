@@ -4,6 +4,7 @@ file(
  GLOB_RECURSE SHADERS_SRC CONFIGURE_DEPENDS
  ${ROOT_DIR}/Assets/*.vert
  ${ROOT_DIR}/Assets/*.frag
+ ${ROOT_DIR}/Assets/*.comp
 )
 
 find_package(Vulkan REQUIRED COMPONENTS glslc)

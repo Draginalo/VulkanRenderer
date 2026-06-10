@@ -1,0 +1,41 @@
+#version 450
+
+layout(binding = 0) uniform DeltaTime {
+	float dt;
+} deltaTime;
+
+struct Particle {
+	vec2 position;
+	vec2 velocity;
+	vec4 color;
+};
+
+layout(std140, binding = 1) readonly buffer ParticleSSBO_In {
+	Particle particlesIn[ ];
+};
+
+layout(std140, binding = 2) buffer ParticleSSBO_Out {
+	Particle particlesOut[ ];
+};
+
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+void main() {
+	uint index = gl_GlobalInvocationID.x;
+
+	particlesOut[index].position = particlesIn[index].position + particlesIn[index].velocity * deltaTime.dt;
+	particlesOut[index].velocity = particlesIn[index].velocity;
+	particlesOut[index].color = particlesIn[index].color;
+
+	if (particlesOut[index].position.x <= -1.0 || particlesOut[index].position.x >= 1.0)
+	{
+		particlesOut[index].position.x = clamp(particlesOut[index].position.x, -1.0, 1.0);
+		particlesOut[index].velocity.x *= -1;
+	}
+
+	if (particlesOut[index].position.y <= -1.0 || particlesOut[index].position.y >= 1.0)
+	{
+		particlesOut[index].position.y = clamp(particlesOut[index].position.y, -1.0, 1.0);
+		particlesOut[index].velocity.y *= -1;
+	}
+}

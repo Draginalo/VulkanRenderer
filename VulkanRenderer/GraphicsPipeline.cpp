@@ -43,24 +43,35 @@ VkShaderModule GraphicsPipeline::createShaderModule(VkDevice logicalDevice, cons
 }
 
 bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat,
-	VkFormat depthAttachmentFormat, VkDescriptorSetLayout pDescriptorSetLayout, VkSampleCountFlagBits samples)
+	VkFormat depthAttachmentFormat, VkDescriptorSetLayout descriptorSetLayout, VkSampleCountFlagBits samples, bool renderingParticles)
 {
-	std::vector<char> basicTriVertShaderCode = readShaderFile("../Assets/Shaders/ByteEncoded/BasicTriangle_VS.spv");
-	std::vector<char> basicTriFragShaderCode = readShaderFile("../Assets/Shaders/ByteEncoded/BasicTriangle_FS.spv");
+	std::vector<char> vertShaderCode;
+	std::vector<char> fragShaderCode;
 
-	VkShaderModule basicTriVertShaderModule = createShaderModule(logicalDevice, basicTriVertShaderCode);
-	VkShaderModule basicTriFragShaderModule = createShaderModule(logicalDevice, basicTriFragShaderCode);
+	if (renderingParticles)
+	{
+		vertShaderCode = readShaderFile("../Assets/Shaders/ByteEncoded/RenderParticles_VS.spv");
+		fragShaderCode = readShaderFile("../Assets/Shaders/ByteEncoded/RenderParticles_FS.spv");
+	}
+	else 
+	{
+		vertShaderCode = readShaderFile("../Assets/Shaders/ByteEncoded/BasicTriangle_VS.spv");
+		fragShaderCode = readShaderFile("../Assets/Shaders/ByteEncoded/BasicTriangle_FS.spv");
+	}
+
+	VkShaderModule vertShaderModule = createShaderModule(logicalDevice, vertShaderCode);
+	VkShaderModule fragShaderModule = createShaderModule(logicalDevice, fragShaderCode);
 
 	VkPipelineShaderStageCreateInfo vertShaderStageCreateInfo{};
 	vertShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	vertShaderStageCreateInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vertShaderStageCreateInfo.module = basicTriVertShaderModule;
+	vertShaderStageCreateInfo.module = vertShaderModule;
 	vertShaderStageCreateInfo.pName = "main";
 
 	VkPipelineShaderStageCreateInfo fragShaderStageCreateInfo{};
 	fragShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	fragShaderStageCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragShaderStageCreateInfo.module = basicTriFragShaderModule;
+	fragShaderStageCreateInfo.module = fragShaderModule;
 	fragShaderStageCreateInfo.pName = "main";
 
 	VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageCreateInfo, fragShaderStageCreateInfo };
@@ -75,8 +86,25 @@ bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D
 	dynamicStateCreateInfo.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
 	dynamicStateCreateInfo.pDynamicStates = dynamicStates.data();
 
-	VkVertexInputBindingDescription vertexBindingDescription = Vertex::getBindingDescription();
-	std::array<VkVertexInputAttributeDescription, 3> vertexAttributeDescription = Vertex::getAttributeDescriptions();
+	VkVertexInputBindingDescription vertexBindingDescription;
+	std::vector<VkVertexInputAttributeDescription> vertexAttributeDescription;
+
+	VkPipelineInputAssemblyStateCreateInfo assemblyInputInfo{};
+	assemblyInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	assemblyInputInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	assemblyInputInfo.primitiveRestartEnable = VK_FALSE;
+
+	if (renderingParticles)
+	{
+		assemblyInputInfo.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+		vertexBindingDescription = Particle::getBindingDescription();
+		vertexAttributeDescription = Particle::getAttributeDescriptions();
+	}
+	else 
+	{
+		vertexBindingDescription = Vertex::getBindingDescription();
+		vertexAttributeDescription = Vertex::getAttributeDescriptions();
+	}
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -84,11 +112,6 @@ bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D
 	vertexInputInfo.pVertexBindingDescriptions = &vertexBindingDescription;
 	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertexAttributeDescription.size());
 	vertexInputInfo.pVertexAttributeDescriptions = vertexAttributeDescription.data();
-
-	VkPipelineInputAssemblyStateCreateInfo assemblyInputInfo{};
-	assemblyInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	assemblyInputInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	assemblyInputInfo.primitiveRestartEnable = VK_FALSE;
 
 	VkViewport viewport{};
 	viewport.x = 0;
@@ -137,6 +160,12 @@ bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D
 	depthStencilInfo.depthBoundsTestEnable = VK_FALSE;
 	depthStencilInfo.stencilTestEnable = VK_FALSE;
 
+	//Fixes transparency when rendering particles
+	if (renderingParticles)
+	{
+		depthStencilInfo.depthWriteEnable = VK_FALSE;
+	}
+
 	VkPipelineColorBlendAttachmentState colorBlendAttachment{};
 	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
 		| VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -144,13 +173,13 @@ bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D
 	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
 	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
 	VkPipelineColorBlendStateCreateInfo blendStateCreateInfo{};
 	blendStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	blendStateCreateInfo.logicOpEnable = VK_TRUE;
+	blendStateCreateInfo.logicOpEnable = VK_FALSE;
 	blendStateCreateInfo.logicOp = VK_LOGIC_OP_COPY;
 	blendStateCreateInfo.attachmentCount = 1;
 	blendStateCreateInfo.pAttachments = &colorBlendAttachment;
@@ -164,11 +193,11 @@ bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D
 	pipelineLayoutCreateInfo.setLayoutCount = 1;
 	pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
 	pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
-	pipelineLayoutCreateInfo.pSetLayouts = &pDescriptorSetLayout;
+	pipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
 
-	if (vkCreatePipelineLayout(logicalDevice, &pipelineLayoutCreateInfo, nullptr, &mPipelineLayout) != VK_SUCCESS)
+	if (vkCreatePipelineLayout(logicalDevice, &pipelineLayoutCreateInfo, nullptr, &mGraphicsPipelineLayout) != VK_SUCCESS)
 	{
-		std::cout << "\nFailed to create pipeline layout..." << std::endl;
+		std::cout << "\nFailed to create graphics pipeline layout..." << std::endl;
 		return false;
 	}
 
@@ -190,7 +219,7 @@ bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D
 	graphicsPipelineCreateInfo.pDepthStencilState = &depthStencilInfo;
 	graphicsPipelineCreateInfo.pColorBlendState = &blendStateCreateInfo;
 	graphicsPipelineCreateInfo.pDynamicState = &dynamicStateCreateInfo;
-	graphicsPipelineCreateInfo.layout = mPipelineLayout;
+	graphicsPipelineCreateInfo.layout = mGraphicsPipelineLayout;
 	graphicsPipelineCreateInfo.subpass = 0;
 	graphicsPipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 	graphicsPipelineCreateInfo.basePipelineIndex = -1;
@@ -212,8 +241,8 @@ bool GraphicsPipeline::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D
 		return false;
 	}
 
-	vkDestroyShaderModule(logicalDevice, basicTriVertShaderModule, nullptr);
-	vkDestroyShaderModule(logicalDevice, basicTriFragShaderModule, nullptr);
+	vkDestroyShaderModule(logicalDevice, vertShaderModule, nullptr);
+	vkDestroyShaderModule(logicalDevice, fragShaderModule, nullptr);
 
 	return true;
 }
@@ -301,12 +330,15 @@ bool GraphicsPipeline::createRenderPass(VkDevice logicalDevice, VkFormat colorAt
 void GraphicsPipeline::cleanupPipeline(VkDevice logicalDevice)
 {
 	vkDestroyPipeline(logicalDevice, mGraphicsPipeline, nullptr);
-	vkDestroyPipelineLayout(logicalDevice, mPipelineLayout, nullptr);
+	vkDestroyPipelineLayout(logicalDevice, mGraphicsPipelineLayout, nullptr);
 
 	if (!mDynamicRenderingEnabled)
 	{
 		vkDestroyRenderPass(logicalDevice, mRenderPass, nullptr);
 	}
+
+	vkDestroyPipeline(logicalDevice, mComputePipeline, nullptr);
+	vkDestroyPipelineLayout(logicalDevice, mComputePipelineLayout, nullptr);
 }
 
 bool GraphicsPipeline::createFramebuffers(VkDevice logicalDevice, std::vector<VkImageView> imageViews, VkImageView depthImageView, 
@@ -360,4 +392,43 @@ VkRenderPassBeginInfo GraphicsPipeline::getRenderPassBeginInfo(uint32_t framebuf
 	renderPassBeginInfo.pClearValues = clearValues.data();
 
 	return renderPassBeginInfo;
+}
+
+bool GraphicsPipeline::createComputePipeline(VkDevice logicalDevice, VkDescriptorSetLayout descriptorSetLayout)
+{
+	VkPipelineLayoutCreateInfo layoutInfo{};
+	layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	layoutInfo.setLayoutCount = 1;
+	layoutInfo.pSetLayouts = &descriptorSetLayout;
+
+	if (vkCreatePipelineLayout(logicalDevice, &layoutInfo, nullptr, &mComputePipelineLayout) != VK_SUCCESS)
+	{
+		std::cout << "\nFailed to create compute pipeline layout..." << std::endl;
+		return false;
+	}
+
+	auto computeShaderCode = readShaderFile("../Assets/Shaders/ByteEncoded/ComputeParticles_CS.spv");
+
+	VkShaderModule computeShaderModule = createShaderModule(logicalDevice, computeShaderCode);
+
+	VkPipelineShaderStageCreateInfo computeShaderStageInfo{};
+	computeShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	computeShaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+	computeShaderStageInfo.module = computeShaderModule;
+	computeShaderStageInfo.pName = "main";
+
+	VkComputePipelineCreateInfo pipelineInfo{};
+	pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+	pipelineInfo.layout = mComputePipelineLayout;
+	pipelineInfo.stage = computeShaderStageInfo;
+
+	if (vkCreateComputePipelines(logicalDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &mComputePipeline) != VK_SUCCESS)
+	{
+		std::cout << "\nFailed to create compute pipeline..." << std::endl;
+		return false;
+	}
+
+	vkDestroyShaderModule(logicalDevice, computeShaderModule, nullptr);
+
+	return true;
 }

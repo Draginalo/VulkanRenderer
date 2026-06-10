@@ -38,17 +38,19 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 
 struct QueueFamiliesIndexStore {
 	int graphicsFamalyIndex = -1;
+	int computeFamalyIndex = -1;
 	int presentFamalyIndex = -1;
 
 	bool containsAllFamilies()
 	{
-		return graphicsFamalyIndex != -1 && presentFamalyIndex != -1;
+		return graphicsFamalyIndex != -1 && computeFamalyIndex != -1 && presentFamalyIndex != -1;
 	}
 
 	std::set<uint32_t> getVectorOfIndecies()
 	{
 		return std::set<uint32_t> {
 			static_cast<uint32_t>(graphicsFamalyIndex),
+			static_cast<uint32_t>(computeFamalyIndex),
 			static_cast<uint32_t>(presentFamalyIndex)
 		};
 	}
@@ -65,7 +67,7 @@ class VulkanManager {
 public:
 	bool initVulkan(GLFWwindow* window);
 	bool cleanupVulkan();
-	bool drawFrame(GLFWwindow* window);
+	bool drawFrame(GLFWwindow* window, float dt);
 	void markFramebuffersResized();
 private:
 	bool createInstance();
@@ -115,6 +117,8 @@ private:
 	bool recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 	bool recordCommandBufferDynamicRendering(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
+	bool recordComputeCommandBuffer(VkCommandBuffer commandBuffer);
+
 	bool createSyncObjects();
 
 	VkSampleCountFlagBits getMaxUsableSampleCount();
@@ -125,6 +129,7 @@ private:
 	VkDevice mLogicalDevice;
 
 	VkQueue mGraphicsQueue;
+	VkQueue mComputeQueue;
 	VkQueue mPresentQueue;
 
 	VkSurfaceKHR mSurface;
@@ -139,14 +144,20 @@ private:
 	UniformBufferData mUniformBufferData;
 
 	VkCommandPool mCommandPool;
-	std::vector<VkCommandBuffer> mCommandBuffers;
+	std::vector<VkCommandBuffer> mGraphicsCommandBuffers;
+	std::vector<VkCommandBuffer> mComputeCommandBuffers;
 
 	std::vector<VkSemaphore> mImageAvailableSemaphores;
 	std::vector<VkSemaphore> mRenderFinishedSemaphores;
 	std::vector<VkFence> mWhileRenderingFences;
 
+	std::vector<VkSemaphore> mComputeFinishedSemaphores;
+	std::vector<VkFence> mWhileComputingFences;
+
 	const int MAX_FRAMES_BEING_PROCESSED = 2;
+	const int PARTICLE_COUNT = 256000;
 	uint32_t mCurrentFrame = 0;
+	bool mRenderingParticles = true;
 
 	bool mFramebuffersResized = false;
 

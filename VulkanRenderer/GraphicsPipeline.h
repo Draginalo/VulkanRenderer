@@ -12,7 +12,8 @@ public:
 	VkShaderModule createShaderModule(VkDevice logicalDevice, const std::vector<char>& shaderByteCode);
 
 	bool createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat, 
-		VkFormat depthAttachmentFormat, VkDescriptorSetLayout pDescriptorSetLayout, VkSampleCountFlagBits samples);
+		VkFormat depthAttachmentFormat, VkDescriptorSetLayout descriptorSetLayout, VkSampleCountFlagBits samples, 
+		bool renderingParticles);
 	bool createRenderPass(VkDevice logicalDevice, VkFormat colorAttachmentFormat, VkFormat depthAttachmentFormat,
 		VkSampleCountFlagBits samples);
 
@@ -24,16 +25,23 @@ public:
 	VkRenderPassBeginInfo getRenderPassBeginInfo(uint32_t framebufferIndex, VkExtent2D renderPassExtent, 
 		std::array<VkClearValue, 2> clearValues);
 
-	inline VkPipeline getPipeline() { return mGraphicsPipeline; }
-	inline VkPipelineLayout getPipelineLayout() { return mPipelineLayout; }
+	inline VkPipeline getGraphicsPipeline() { return mGraphicsPipeline; }
+	inline VkPipeline getComputePipeline() { return mComputePipeline; }
+	inline VkPipelineLayout getGraphicsPipelineLayout() { return mGraphicsPipelineLayout; }
+	inline VkPipelineLayout getComputePipelineLayout() { return mComputePipelineLayout; }
 
 	inline bool dynamicRenderingEnabled() { return mDynamicRenderingEnabled; }
 
+	bool createComputePipeline(VkDevice logicalDevice, VkDescriptorSetLayout descriptorSetLayout);
+
 private:
-	VkPipelineLayout mPipelineLayout;
+	VkPipelineLayout mGraphicsPipelineLayout;
 	VkRenderPass mRenderPass;
 	VkPipeline mGraphicsPipeline;
 	std::vector<VkFramebuffer> mFramebuffers;
+
+	VkPipelineLayout mComputePipelineLayout;
+	VkPipeline mComputePipeline;
 
 	bool mDynamicRenderingEnabled = true;
 };
