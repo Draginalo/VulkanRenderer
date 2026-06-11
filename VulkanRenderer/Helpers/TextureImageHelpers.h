@@ -24,3 +24,5 @@ void copyBufferToImage(VkDevice logicalDevice, VkBuffer srcBuffer, VkImage dstIm
 
 bool createImageView(VkDevice logicalDevice, VkImage image, VkImageView* pImageView, VkFormat format, VkImageAspectFlags aspectFlags,
 	uint32_t mipLevels);
+
+bool createTextureSampler(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkSampler* pTextureSampler);

@@ -332,10 +332,7 @@ void PipelineData::cleanupPipeline(VkDevice logicalDevice)
 	vkDestroyPipeline(logicalDevice, mGraphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(logicalDevice, mGraphicsPipelineLayout, nullptr);
 
-	if (!mDynamicRenderingEnabled)
-	{
-		vkDestroyRenderPass(logicalDevice, mRenderPass, nullptr);
-	}
+	cleanupRenderPass(logicalDevice);
 
 	vkDestroyPipeline(logicalDevice, mComputePipeline, nullptr);
 	vkDestroyPipelineLayout(logicalDevice, mComputePipelineLayout, nullptr);
@@ -371,12 +368,22 @@ bool PipelineData::createFramebuffers(VkDevice logicalDevice, std::vector<VkImag
 	return true;
 }
 
+void PipelineData::cleanupRenderPass(VkDevice logicalDevice)
+{
+	if (mRenderPass != VK_NULL_HANDLE)
+	{
+		vkDestroyRenderPass(logicalDevice, mRenderPass, nullptr);
+	}
+}
+
 void PipelineData::cleanupFrambuffers(VkDevice logicalDevice)
 {
 	for (VkFramebuffer framebuffer : mFramebuffers)
 	{
 		vkDestroyFramebuffer(logicalDevice, framebuffer, nullptr);
 	}
+
+	mFramebuffers.clear();
 }
 
 VkRenderPassBeginInfo PipelineData::getRenderPassBeginInfo(uint32_t framebufferIndex, VkExtent2D renderPassExtent,
