@@ -17,6 +17,7 @@ int main() {
     float currTime = 0, prevTime = 0, dt = 0;
     while (!windowManager.shouldCloseWindow()) {
         windowManager.pollWindowEvents();
+
         vulkanManager.drawFrame(windowManager.getWindowRef(), dt, guiHandler.getReloadGUI_Flag());
 
         guiHandler.checkGUI_State(windowManager.getWindowRef(), &vulkanManager);

@@ -1,36 +1,36 @@
-#include "VertexBufferData.h"
-#include "Helpers/BufferHelpers.h"
-#include "Helpers/ModelHelpers.h"
+#include "MeshGeneric.h"
+#include "../Helpers/BufferHelpers.h"
+#include "../Helpers/ModelHelpers.h"
 
-bool VertexBufferData::createVertexBuffer(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, 
-	VkQueue submitQueue)
+bool MeshGeneric::createVertexBuffer(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkCommandPool commandPool,
+	VkQueue submitQueue, const void* vertexData, VkDeviceSize vertexBufferSize, std::vector<uint32_t> indecies, 
+	VertexInputData vertexInputData)
 {
-	loadModel("../Assets/Models/Room/room.obj", &mVerticies,  &mIndecies);
-
-	VkDeviceSize bufferSize = sizeof(mVerticies[0]) * mVerticies.size();
+	mVertexInputData = vertexInputData;
+	mIndecies = indecies;
 
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
 
-	if (!createBuffer(logicalDevice, physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+	if (!createBuffer(logicalDevice, physicalDevice, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory))
 	{
 		return false;
 	}
 
 	void* data;
-	vkMapMemory(logicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
-	memcpy(data, mVerticies.data(), (size_t)bufferSize);
+	vkMapMemory(logicalDevice, stagingBufferMemory, 0, vertexBufferSize, 0, &data);
+	memcpy(data, vertexData, (size_t)vertexBufferSize);
 	vkUnmapMemory(logicalDevice, stagingBufferMemory);
 
-	if (!createBuffer(logicalDevice, physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+	if (!createBuffer(logicalDevice, physicalDevice, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mVertexBuffer, mVertexBufferMemory))
 	{
 		return false;
 	}
 
 	//Copies vertex data from cpu staging buffer to gpu local memory buffer
-	if (!copyBuffer(logicalDevice, stagingBuffer, mVertexBuffer, bufferSize, commandPool, submitQueue))
+	if (!copyBuffer(logicalDevice, stagingBuffer, mVertexBuffer, vertexBufferSize, commandPool, submitQueue))
 	{
 		return false;
 	}
@@ -41,7 +41,7 @@ bool VertexBufferData::createVertexBuffer(VkDevice logicalDevice, VkPhysicalDevi
 	return true;
 }
 
-bool VertexBufferData::createIndeciesBuffer(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue submitQueue)
+bool MeshGeneric::createIndeciesBuffer(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue submitQueue)
 {
 	VkDeviceSize bufferSize = sizeof(mIndecies[0]) * mIndecies.size();
 
@@ -77,7 +77,7 @@ bool VertexBufferData::createIndeciesBuffer(VkDevice logicalDevice, VkPhysicalDe
 	return true;
 }
 
-void VertexBufferData::cleanupBuffers(VkDevice logicalDevice)
+void MeshGeneric::cleanupBuffers(VkDevice logicalDevice)
 {
 	vkDestroyBuffer(logicalDevice, mVertexBuffer, nullptr);
 	vkFreeMemory(logicalDevice, mVertexBufferMemory, nullptr);
@@ -86,7 +86,7 @@ void VertexBufferData::cleanupBuffers(VkDevice logicalDevice)
 	vkFreeMemory(logicalDevice, mIndeciesBufferMemory, nullptr);
 }
 
-void VertexBufferData::draw(VkCommandBuffer commandBuffer)
+void MeshGeneric::draw(VkCommandBuffer commandBuffer)
 {
 	VkDeviceSize offsets[] = { 0 };
 

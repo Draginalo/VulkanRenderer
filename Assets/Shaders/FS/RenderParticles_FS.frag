@@ -2,7 +2,7 @@
 
 layout(location = 0) out vec4 outColor;
 
-layout(location = 0) in vec4 vColor;
+layout(location = 0) in vec3 vColor;
 
 void main() {
 	vec2 coord = gl_PointCoord - vec2(0.5);

@@ -1,8 +1,7 @@
 #include "PipelineData.h"
-#include "VertexBufferData.h"
 #include "UniformBufferData.h"
 
-std::vector<char> PipelineData::readShaderFile(const std::string& filepath)
+std::vector<char> PipelineData::readShaderFile(const char* filepath)
 {
 	std::ifstream file(filepath, std::ios::ate | std::ios::binary);
 	std::vector<char> buffer = {};
@@ -43,21 +42,27 @@ VkShaderModule PipelineData::createShaderModule(VkDevice logicalDevice, const st
 }
 
 bool PipelineData::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat,
-	VkFormat depthAttachmentFormat, VkDescriptorSetLayout descriptorSetLayout, VkSampleCountFlagBits samples, bool renderingParticles)
+	VkFormat depthAttachmentFormat, VkDescriptorSetLayout descriptorSetLayout, ConfigurablePipelineValues configValues,
+	const char* vertShaderFilepath, const char* fragShaderFilepath, VertexInputData vertexInputData)
 {
+	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
+	pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutCreateInfo.setLayoutCount = 1;
+	pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+	pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+	pipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
+
+	if (vkCreatePipelineLayout(logicalDevice, &pipelineLayoutCreateInfo, nullptr, &mGraphicsPipelineLayout) != VK_SUCCESS)
+	{
+		std::cout << "\nFailed to create graphics pipeline layout..." << std::endl;
+		return false;
+	}
+
 	std::vector<char> vertShaderCode;
 	std::vector<char> fragShaderCode;
 
-	if (renderingParticles)
-	{
-		vertShaderCode = readShaderFile("../Assets/Shaders/ByteEncoded/RenderParticles_VS.spv");
-		fragShaderCode = readShaderFile("../Assets/Shaders/ByteEncoded/RenderParticles_FS.spv");
-	}
-	else 
-	{
-		vertShaderCode = readShaderFile("../Assets/Shaders/ByteEncoded/BasicTriangle_VS.spv");
-		fragShaderCode = readShaderFile("../Assets/Shaders/ByteEncoded/BasicTriangle_FS.spv");
-	}
+	vertShaderCode = readShaderFile(vertShaderFilepath);
+	fragShaderCode = readShaderFile(fragShaderFilepath);
 
 	VkShaderModule vertShaderModule = createShaderModule(logicalDevice, vertShaderCode);
 	VkShaderModule fragShaderModule = createShaderModule(logicalDevice, fragShaderCode);
@@ -91,20 +96,11 @@ bool PipelineData::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D vie
 
 	VkPipelineInputAssemblyStateCreateInfo assemblyInputInfo{};
 	assemblyInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	assemblyInputInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	assemblyInputInfo.topology = configValues.primitiveTopology;
 	assemblyInputInfo.primitiveRestartEnable = VK_FALSE;
 
-	if (renderingParticles)
-	{
-		assemblyInputInfo.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
-		vertexBindingDescription = Particle::getBindingDescription();
-		vertexAttributeDescription = Particle::getAttributeDescriptions();
-	}
-	else 
-	{
-		vertexBindingDescription = Vertex::getBindingDescription();
-		vertexAttributeDescription = Vertex::getAttributeDescriptions();
-	}
+	vertexBindingDescription = vertexInputData.vertexInputBinding;
+	vertexAttributeDescription = vertexInputData.vertexInputAttributes;
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -147,7 +143,7 @@ bool PipelineData::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D vie
 	multisamplingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	multisamplingInfo.sampleShadingEnable = VK_FALSE;
 	multisamplingInfo.minSampleShading = 1.0f;
-	multisamplingInfo.rasterizationSamples = samples;
+	multisamplingInfo.rasterizationSamples = configValues.samples;
 	multisamplingInfo.pSampleMask = nullptr;
 	multisamplingInfo.alphaToCoverageEnable = VK_FALSE;
 	multisamplingInfo.alphaToOneEnable = VK_FALSE;
@@ -155,16 +151,10 @@ bool PipelineData::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D vie
 	VkPipelineDepthStencilStateCreateInfo depthStencilInfo{};
 	depthStencilInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 	depthStencilInfo.depthTestEnable = VK_TRUE;
-	depthStencilInfo.depthWriteEnable = VK_TRUE;
+	depthStencilInfo.depthWriteEnable = configValues.depthWriteEnabled;
 	depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS;
 	depthStencilInfo.depthBoundsTestEnable = VK_FALSE;
 	depthStencilInfo.stencilTestEnable = VK_FALSE;
-
-	//Fixes transparency when rendering particles
-	if (renderingParticles)
-	{
-		depthStencilInfo.depthWriteEnable = VK_FALSE;
-	}
 
 	VkPipelineColorBlendAttachmentState colorBlendAttachment{};
 	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
@@ -187,19 +177,6 @@ bool PipelineData::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D vie
 	blendStateCreateInfo.blendConstants[1] = 0.0f;
 	blendStateCreateInfo.blendConstants[2] = 0.0f;
 	blendStateCreateInfo.blendConstants[3] = 0.0f;
-
-	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
-	pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutCreateInfo.setLayoutCount = 1;
-	pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-	pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
-	pipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
-
-	if (vkCreatePipelineLayout(logicalDevice, &pipelineLayoutCreateInfo, nullptr, &mGraphicsPipelineLayout) != VK_SUCCESS)
-	{
-		std::cout << "\nFailed to create graphics pipeline layout..." << std::endl;
-		return false;
-	}
 
 	VkPipelineRenderingCreateInfoKHR dynamicPipelineInfo{};
 	dynamicPipelineInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;

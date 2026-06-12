@@ -1,19 +1,28 @@
 #pragma once
 
 #include "vulkan/vulkan.h"
+#include "Mesh/MeshGeneric.h"
 
 #include <iostream>
 #include <fstream>
 #include <vector>
 
+//Struct to pass the main configurable values when creating the pipeline (rather than moving all the create info 
+// structs as parameters). Might need to refactor to have a better way of creating different pipelines
+struct ConfigurablePipelineValues {
+	VkPrimitiveTopology primitiveTopology;
+	VkBool32 depthWriteEnabled;
+	VkSampleCountFlagBits samples;
+};
+
 class PipelineData {
 public:
-	std::vector<char> readShaderFile(const std::string& filepath);
+	std::vector<char> readShaderFile(const char* filepath);
 	VkShaderModule createShaderModule(VkDevice logicalDevice, const std::vector<char>& shaderByteCode);
 
 	bool createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat, 
-		VkFormat depthAttachmentFormat, VkDescriptorSetLayout descriptorSetLayout, VkSampleCountFlagBits samples, 
-		bool renderingParticles);
+		VkFormat depthAttachmentFormat, VkDescriptorSetLayout descriptorSetLayout, ConfigurablePipelineValues configValues,
+		const char* vertShaderFilepath, const char* fragShaderFilepath, VertexInputData vertexInputData);
 	bool createRenderPass(VkDevice logicalDevice, VkFormat colorAttachmentFormat, VkFormat depthAttachmentFormat,
 		VkSampleCountFlagBits samples);
 

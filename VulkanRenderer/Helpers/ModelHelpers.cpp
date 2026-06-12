@@ -4,7 +4,7 @@
 #include <tiny_obj_loader.h>
 #include <unordered_map>
 
-bool loadModel(const char* filepath, std::vector<Vertex>* vertices, std::vector<uint32_t>* indecies)
+bool loadModel(const char* filepath, std::vector<Vertex3D>* vertices, std::vector<uint32_t>* indecies)
 {
 	tinyobj::attrib_t attrib;
 
@@ -19,13 +19,13 @@ bool loadModel(const char* filepath, std::vector<Vertex>* vertices, std::vector<
 		return false;
 	}
 
-	std::unordered_map<Vertex, uint32_t> uniqueVertices{};
+	std::unordered_map<Vertex3D, uint32_t> uniqueVertices{};
 
 	for (const tinyobj::shape_t& shape : shapes)
 	{
 		for (const tinyobj::index_t& index : shape.mesh.indices)
 		{
-			Vertex vertex{};
+			Vertex3D vertex{};
 			vertex.position = {
 				attrib.vertices[3 * index.vertex_index],
 				attrib.vertices[3 * index.vertex_index + 1],

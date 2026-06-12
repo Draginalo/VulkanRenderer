@@ -3,6 +3,6 @@
 #include <vector>
 #include <iostream>
 
-#include "../VertexBufferData.h"
+#include "../Mesh/MeshGeneric.h"
 
-bool loadModel(const char* filepath, std::vector<Vertex>* vertices, std::vector<uint32_t>* indecies);
+bool loadModel(const char* filepath, std::vector<Vertex3D>* vertices, std::vector<uint32_t>* indecies);

@@ -21,7 +21,7 @@
 #include <string>
 
 #include "PipelineData.h"
-#include "VertexBufferData.h"
+#include "Mesh/Mesh3D.h"
 #include "UniformBufferData.h"
 #include "Helpers/TextureImageHelpers.h"
 
@@ -92,7 +92,6 @@ public:
 	void renderGUI_DynamicRender(VkCommandBuffer commandBuffer, int imageIndex);
 
 	SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
-	void handlePipelineChanges(GLFWwindow* window, bool* needToReloadGUI_Flag);
 
 	inline const VkInstance getInstance() { return mInstance; }
 	inline const VkDevice getLogicalDevice() { return mLogicalDevice; }
@@ -152,6 +151,8 @@ private:
 
 	bool createSyncObjects();
 
+	void handlePipelineChanges(GLFWwindow* window, bool* needToReloadGUI_Flag);
+
 	VkSampleCountFlagBits getMaxUsableSampleCount();
 
 	VkInstance mInstance;
@@ -172,7 +173,7 @@ private:
 	VkFormat mDepthFormat;
 
 	PipelineData mPipelineData;
-	VertexBufferData mVertexBufferData;
+	Mesh3D mVertexBufferData;
 	UniformBufferData mUniformBufferData;
 
 	VkCommandPool mCommandPool;

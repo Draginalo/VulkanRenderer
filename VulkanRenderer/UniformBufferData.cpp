@@ -221,7 +221,7 @@ bool UniformBufferData::createComputeDescriptorSets(VkDevice logicalDevice, int 
 		VkDescriptorBufferInfo ssboPrevFrame{};
 		ssboPrevFrame.buffer = mSSBOs[(i - 1) % maxFramesBeingProcessed];
 		ssboPrevFrame.offset = 0;
-		ssboPrevFrame.range = sizeof(Particle) * numParticles;
+		ssboPrevFrame.range = sizeof(Particle2D) * numParticles;
 
 		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrites[1].dstSet = mComputeDescriptorSets[i];
@@ -234,7 +234,7 @@ bool UniformBufferData::createComputeDescriptorSets(VkDevice logicalDevice, int 
 		VkDescriptorBufferInfo ssboCurrFrame{};
 		ssboCurrFrame.buffer = mSSBOs[i];
 		ssboCurrFrame.offset = 0;
-		ssboCurrFrame.range = sizeof(Particle) * numParticles;
+		ssboCurrFrame.range = sizeof(Particle2D) * numParticles;
 
 		descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrites[2].dstSet = mComputeDescriptorSets[i];
@@ -256,7 +256,7 @@ bool UniformBufferData::createSSBOs(VkDevice logicalDevice, VkPhysicalDevice phy
 	mSSBOs.resize(maxFramesBeingProcessed);
 	mSSBOsMemory.resize(maxFramesBeingProcessed);
 
-	std::vector<Particle> particles(numParticles);
+	std::vector<Particle2D> particles(numParticles);
 
 	std::default_random_engine rngEngine((unsigned)time(nullptr));
 	std::uniform_real_distribution<float> rngRange(0.0f, 1.0f);
@@ -269,10 +269,10 @@ bool UniformBufferData::createSSBOs(VkDevice logicalDevice, VkPhysicalDevice phy
 		float y = r * sin(theta);
 		particles[i].position = glm::vec2(x, y);
 		particles[i].velocity = glm::normalize(particles[i].position) * 0.00025f * (rngRange(rngEngine) + 0.3f);
-		particles[i].color = glm::vec4(rngRange(rngEngine), rngRange(rngEngine), rngRange(rngEngine), 1.0f);
+		particles[i].color = glm::vec3(rngRange(rngEngine), rngRange(rngEngine), rngRange(rngEngine));
 	}
 
-	VkDeviceSize bufferSize = sizeof(Particle) * numParticles;
+	VkDeviceSize bufferSize = sizeof(Particle2D) * numParticles;
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
 

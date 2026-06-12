@@ -29,11 +29,23 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	mUniformBufferData.createDescriptorSetLayout(mLogicalDevice);
 	mUniformBufferData.createComputeDescriptorSetLayout(mLogicalDevice);
 
-	mPipelineData.createGraphicsPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat,
-		mUniformBufferData.getDescriptorSetLayout(), mMSAA_Samples, mRenderingParticles);
-	mPipelineData.createComputePipeline(mLogicalDevice, mUniformBufferData.getComputeDescriptorSetLayout());
-
 	createCommandPool();
+
+	mVertexBufferData.createVertexDataFromModel(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue, "../Assets/Models/Room/room.obj");
+
+	ConfigurablePipelineValues configValues{};
+	configValues.samples = mMSAA_Samples;
+	configValues.primitiveTopology = mRenderingParticles ? VK_PRIMITIVE_TOPOLOGY_POINT_LIST : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	configValues.depthWriteEnabled = !mRenderingParticles;
+
+	const char* vertShader = mRenderingParticles ? "../Assets/Shaders/ByteEncoded/RenderParticles_VS.spv" : "../Assets/Shaders/ByteEncoded/BasicTriangle_VS.spv";
+	const char* fragShader = mRenderingParticles ? "../Assets/Shaders/ByteEncoded/RenderParticles_FS.spv" : "../Assets/Shaders/ByteEncoded/BasicTriangle_FS.spv";
+
+	VertexInputData vertexInputInfo = mRenderingParticles ? Particle2D::getParticleInputData() : mVertexBufferData.getVertexInputData();
+
+	mPipelineData.createGraphicsPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat,
+		mUniformBufferData.getDescriptorSetLayout(), configValues, vertShader, fragShader, vertexInputInfo);
+	mPipelineData.createComputePipeline(mLogicalDevice, mUniformBufferData.getComputeDescriptorSetLayout());
 
 	uint32_t texMipLevels;
 	createTextureImage(mLogicalDevice, mPhysicalDevice, mTextureImage, mTextureMemory, mCommandPool, mGraphicsQueue, 
@@ -47,9 +59,6 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	}
 
 	createTextureSampler(mLogicalDevice, mPhysicalDevice, &mTextureSampler);
-
-	mVertexBufferData.createVertexBuffer(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue);
-	mVertexBufferData.createIndeciesBuffer(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue);
 
 	mUniformBufferData.createSSBOs(mLogicalDevice, mPhysicalDevice, MAX_FRAMES_BEING_PROCESSED, PARTICLE_COUNT,
 		mSwapChainImageExtent.height / (float)mSwapChainImageExtent.width, mCommandPool, mGraphicsQueue);
@@ -1124,8 +1133,17 @@ void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReload
 		vkDestroyPipeline(mLogicalDevice, mPipelineData.getGraphicsPipeline(), nullptr);
 		vkDestroyPipelineLayout(mLogicalDevice, mPipelineData.getGraphicsPipelineLayout(), nullptr);
 
+		ConfigurablePipelineValues configValues{};
+		configValues.samples = mMSAA_Samples;
+		configValues.primitiveTopology = mRenderingParticles ? VK_PRIMITIVE_TOPOLOGY_POINT_LIST : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		configValues.depthWriteEnabled = !mRenderingParticles;
+
+		const char* vertShader = mRenderingParticles ? "../Assets/Shaders/ByteEncoded/RenderParticles_VS.spv" : "../Assets/Shaders/ByteEncoded/BasicTriangle_VS.spv";
+		const char* fragShader = mRenderingParticles ? "../Assets/Shaders/ByteEncoded/RenderParticles_FS.spv" : "../Assets/Shaders/ByteEncoded/BasicTriangle_FS.spv";
+
+		VertexInputData vertexInputInfo = mRenderingParticles ? Particle2D::getParticleInputData() : mVertexBufferData.getVertexInputData();
 		mPipelineData.createGraphicsPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat,
-			mUniformBufferData.getDescriptorSetLayout(), mMSAA_Samples, mRenderingParticles);
+			mUniformBufferData.getDescriptorSetLayout(), configValues, vertShader, fragShader, vertexInputInfo);
 
 		mRemakePipelineTriggered = false;
 	}
@@ -1155,8 +1173,18 @@ void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReload
 			}
 		}
 
+		ConfigurablePipelineValues configValues{};
+		configValues.samples = mMSAA_Samples;
+		configValues.primitiveTopology = mRenderingParticles ? VK_PRIMITIVE_TOPOLOGY_POINT_LIST : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		configValues.depthWriteEnabled = !mRenderingParticles;
+
+		const char* vertShader = mRenderingParticles ? "../Assets/Shaders/ByteEncoded/RenderParticles_VS.spv" : "../Assets/Shaders/ByteEncoded/BasicTriangle_VS.spv";
+		const char* fragShader = mRenderingParticles ? "../Assets/Shaders/ByteEncoded/RenderParticles_FS.spv" : "../Assets/Shaders/ByteEncoded/BasicTriangle_FS.spv";
+
+		VertexInputData vertexInputInfo = mRenderingParticles ? Particle2D::getParticleInputData() : mVertexBufferData.getVertexInputData();
+
 		mPipelineData.createGraphicsPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat,
-			mUniformBufferData.getDescriptorSetLayout(), mMSAA_Samples, mRenderingParticles);
+			mUniformBufferData.getDescriptorSetLayout(), configValues, vertShader, fragShader, vertexInputInfo);
 
 		mSwitchingRenderMethod = false;
 
