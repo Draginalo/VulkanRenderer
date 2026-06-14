@@ -6,7 +6,7 @@
 #include <array>
 #include <iostream>
 
-#include "../Helpers/VertexInputHelpers.h"
+#include "../Helpers/VertexInputData.h"
 
 class MeshGeneric {
 public:

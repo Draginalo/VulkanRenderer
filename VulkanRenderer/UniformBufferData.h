@@ -11,7 +11,8 @@
 #include <array>
 #include <chrono>
 
-#include "Helpers/VertexInputHelpers.h"
+#include "Helpers/VertexInputData.h"
+#include "UniformObjectHandlers/DescriptorSetsData.h"
 
 //Uniform buffer struct for mvp matrecies with explicit alignment specefied to match shader uniform alignment
 // Could also use #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES but does not always catch alignment for nested structs
@@ -27,13 +28,14 @@ struct DeltaTimeUniformObject {
 
 class UniformBufferData {
 public:
+	void setDescriptorSetData(DescriptorSetsData descriptorSetData) { mDescriptorSetData = descriptorSetData; }
 	bool createDescriptorSetLayout(VkDevice logicalDevice);
 	bool createUniformBuffers(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, int maxFramesBeingProcessed);
-	bool createDescriptorPool(VkDevice logicalDevice, int maxFramesBeingProcessed);
-	bool createDescriptorSets(VkDevice logicalDevice, VkImageView imageView, VkSampler sampler, int maxFramesBeingProcessed);
+	bool createDescriptorSetsData(VkDevice logicalDevice, VkDescriptorPool descriptorPool, int maxFramesBeingProcessed);
 
 	bool createComputeDescriptorSetLayout(VkDevice logicalDevice);
-	bool createComputeDescriptorSets(VkDevice logicalDevice, int maxFramesBeingProcessed, int numParticles);
+	bool createComputeDescriptorSets(VkDevice logicalDevice, VkDescriptorPool descriptorPool, int maxFramesBeingProcessed, 
+		int numParticles);
 	bool createSSBOs(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, int maxFramesBeingProcessed, 
 		const int numParticles, float recipAspect, VkCommandPool commandPool, VkQueue submitQueue);
 
@@ -50,16 +52,12 @@ private:
 	VkDescriptorSetLayout mDescriptorSetLayout;
 	VkDescriptorSetLayout mComputeDescriptorSetLayout;
 
-	std::vector<VkBuffer> mUniformBuffersMVP;
-	std::vector<VkDeviceMemory> mUniformBuffersMVPMemory;
-	std::vector<void*> mUniformBuffersMVPMapped;
+	std::vector<VkBuffer> mUniformBuffers;
+	std::vector<VkDeviceMemory> mUniformBuffersMemory;
+	std::vector<void*> mUniformBuffersMapped;
 
-	std::vector<VkBuffer> mUniformBuffersDT;
-	std::vector<VkDeviceMemory> mUniformBuffersDTMemory;
-	std::vector<void*> mUniformBuffersDTMapped;
-
-	VkDescriptorPool mDescriptorPool;
-	std::vector<VkDescriptorSet> mDescriptorSets;
+	DescriptorSetsData mDescriptorSetData;
+	std::vector< VkDescriptorSet> mDescriptorSets;
 	std::vector<VkDescriptorSet> mComputeDescriptorSets;
 
 	std::vector<VkBuffer> mSSBOs;

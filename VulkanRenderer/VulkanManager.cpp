@@ -1,6 +1,9 @@
 ﻿#include "VulkanManager.h"
 #include "Helpers/BufferHelpers.h"
 
+#include "UniformObjectHandlers//UniformObjects/UniformBufferDescriptor.h"
+#include "UniformObjectHandlers/UniformObjects/UniformImageDescriptor.h"
+
 bool VulkanManager::initVulkan(GLFWwindow* window)
 {
 	std::cout << "\nInitializing Vulkan" << std::endl;
@@ -26,10 +29,74 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 			mSwapChainImageExtent);
 	}
 
+	createCommandPool();
+
+	uint32_t texMipLevels;
+	createTextureImage(mLogicalDevice, mPhysicalDevice, mTextureImage, mTextureMemory, mCommandPool, mGraphicsQueue,
+		"../Assets/Models/Room/room.png", texMipLevels);
+
+	if (!createImageView(mLogicalDevice, mTextureImage, &mTextureImageView, VK_FORMAT_R8G8B8A8_SRGB,
+		VK_IMAGE_ASPECT_COLOR_BIT, texMipLevels) != VK_SUCCESS)
+	{
+		std::cout << "\nFailed to create texture image view..." << std::endl;
+		return false;
+	}
+
+	createTextureSampler(mLogicalDevice, mPhysicalDevice, &mTextureSampler);
+
+	DescriptorPoolCreateData descPoolCreateInfo{};
+	descPoolCreateInfo.maxDescriptorSets = 2;
+	descPoolCreateInfo.maxFramesInFlight = MAX_FRAMES_IN_FLIGHT;
+	descPoolCreateInfo.uniformBufferCount = 2;
+	descPoolCreateInfo.storageBufferCount = 2;
+	descPoolCreateInfo.combinedImageSamplerCount = 1;
+
+	mDescriptorPool.createDescriptorPool(mLogicalDevice, descPoolCreateInfo);
+
+	DescriptorSetsData descriptorData{};
+	std::vector<UniformBufferDescriptor*> descriptos;
+
+	des1.setDstBinding(0);
+	VkDescriptorBufferInfo bufferInfo{};
+	bufferInfo.offset = 0;
+	bufferInfo.range = sizeof(ModelViewProjectionUniformObject);
+	des1.setBufferInfo(bufferInfo);
+	descriptos.push_back(&des1);
+
+	std::vector<UniformImageDescriptor*> descriptos1;
+	VkDescriptorImageInfo imageInfo{};
+	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	imageInfo.imageView = mTextureImageView;
+	imageInfo.sampler = mTextureSampler;
+
+	std::vector<UniformBufferDescriptor*> descriptos2;
+
+	des3 = UniformBufferDescriptor(0, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, sizeof(DeltaTimeUniformObject));
+	descriptos2.push_back(&des3);
+
+	des4 = UniformBufferDescriptor(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 
+		sizeof(Particle2D) * PARTICLE_COUNT, nullptr, true);
+	descriptos2.push_back(&des4);
+
+	des5 = UniformBufferDescriptor(2, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		sizeof(Particle2D) * PARTICLE_COUNT);
+	descriptos2.push_back(&des5);
+
+	std::vector<UniformImageDescriptor*> descriptos3;
+	imageInfo = {};
+	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	imageInfo.imageView = mTextureImageView;
+	imageInfo.sampler = mTextureSampler;
+
+	des2.setImageInfo(imageInfo);
+	des2.setDstBinding(1);
+	descriptos1.push_back(&des2);
+
+	descriptorData.loadDescriptorSets(descriptos, descriptos1, descriptos2, descriptos3, MAX_FRAMES_IN_FLIGHT);
+	mUniformBufferData.setDescriptorSetData(descriptorData);
+
 	mUniformBufferData.createDescriptorSetLayout(mLogicalDevice);
 	mUniformBufferData.createComputeDescriptorSetLayout(mLogicalDevice);
-
-	createCommandPool();
 
 	mVertexBufferData.createVertexDataFromModel(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue, "../Assets/Models/Room/room.obj");
 
@@ -47,26 +114,14 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 		mUniformBufferData.getDescriptorSetLayout(), configValues, vertShader, fragShader, vertexInputInfo);
 	mPipelineData.createComputePipeline(mLogicalDevice, mUniformBufferData.getComputeDescriptorSetLayout());
 
-	uint32_t texMipLevels;
-	createTextureImage(mLogicalDevice, mPhysicalDevice, mTextureImage, mTextureMemory, mCommandPool, mGraphicsQueue, 
-		"../Assets/Models/Room/room.png", texMipLevels);
-
-	if (!createImageView(mLogicalDevice, mTextureImage, &mTextureImageView, VK_FORMAT_R8G8B8A8_SRGB, 
-		VK_IMAGE_ASPECT_COLOR_BIT, texMipLevels) != VK_SUCCESS)
-	{
-		std::cout << "\nFailed to create texture image view..." << std::endl;
-		return false;
-	}
-
-	createTextureSampler(mLogicalDevice, mPhysicalDevice, &mTextureSampler);
-
-	mUniformBufferData.createSSBOs(mLogicalDevice, mPhysicalDevice, MAX_FRAMES_BEING_PROCESSED, PARTICLE_COUNT,
+	mUniformBufferData.createSSBOs(mLogicalDevice, mPhysicalDevice, MAX_FRAMES_IN_FLIGHT, PARTICLE_COUNT,
 		mSwapChainImageExtent.height / (float)mSwapChainImageExtent.width, mCommandPool, mGraphicsQueue);
-	mUniformBufferData.createUniformBuffers(mLogicalDevice, mPhysicalDevice, MAX_FRAMES_BEING_PROCESSED);
 
-	mUniformBufferData.createDescriptorPool(mLogicalDevice, MAX_FRAMES_BEING_PROCESSED);
-	mUniformBufferData.createDescriptorSets(mLogicalDevice, mTextureImageView, mTextureSampler, MAX_FRAMES_BEING_PROCESSED);
-	mUniformBufferData.createComputeDescriptorSets(mLogicalDevice, MAX_FRAMES_BEING_PROCESSED, PARTICLE_COUNT);
+	mUniformBufferData.createUniformBuffers(mLogicalDevice, mPhysicalDevice, MAX_FRAMES_IN_FLIGHT);
+
+	mUniformBufferData.createDescriptorSetsData(mLogicalDevice, mDescriptorPool.getDescriptorPool(), MAX_FRAMES_IN_FLIGHT);
+	mUniformBufferData.createComputeDescriptorSets(mLogicalDevice, mDescriptorPool.getDescriptorPool(), MAX_FRAMES_IN_FLIGHT, 
+		PARTICLE_COUNT);
 
 	createCommandBuffers();
 	createSyncObjects();
@@ -84,7 +139,7 @@ bool VulkanManager::cleanupVulkan()
 
 	int numSwapChainImages = mSwapChainImages.size();
 
-	for (size_t i = 0; i < MAX_FRAMES_BEING_PROCESSED; i++)
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
 		vkDestroySemaphore(mLogicalDevice, mImageAvailableSemaphores[i], nullptr);
 		vkDestroyFence(mLogicalDevice, mWhileRenderingFences[i], nullptr);
@@ -116,6 +171,7 @@ bool VulkanManager::cleanupVulkan()
 	vkFreeMemory(mLogicalDevice, mMSAA_ColorhMemory, nullptr);
 
 	mUniformBufferData.cleanup(mLogicalDevice);
+	mDescriptorPool.cleanup(mLogicalDevice);
 	mVertexBufferData.cleanupBuffers(mLogicalDevice);
 	mPipelineData.cleanupPipeline(mLogicalDevice);
 
@@ -246,7 +302,7 @@ bool VulkanManager::drawFrame(GLFWwindow* window, float dt, bool* needToReloadGU
 
 	handlePipelineChanges(window, needToReloadGUI_Flag);
 
-	mCurrentFrame = (mCurrentFrame + 1) % MAX_FRAMES_BEING_PROCESSED;
+	mCurrentFrame = (mCurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 
 	return true;
 }
@@ -906,13 +962,13 @@ bool VulkanManager::createCommandPool()
 
 bool VulkanManager::createCommandBuffers()
 {
-	mGraphicsCommandBuffers.resize(MAX_FRAMES_BEING_PROCESSED);
+	mGraphicsCommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
 	VkCommandBufferAllocateInfo commandBufAllocateInfo{};
 	commandBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	commandBufAllocateInfo.commandPool = mCommandPool;
 	commandBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	commandBufAllocateInfo.commandBufferCount = (uint32_t)MAX_FRAMES_BEING_PROCESSED;
+	commandBufAllocateInfo.commandBufferCount = (uint32_t)MAX_FRAMES_IN_FLIGHT;
 
 	if (vkAllocateCommandBuffers(mLogicalDevice, &commandBufAllocateInfo, mGraphicsCommandBuffers.data()) != VK_SUCCESS)
 	{
@@ -920,13 +976,13 @@ bool VulkanManager::createCommandBuffers()
 		return false;
 	}
 
-	mComputeCommandBuffers.resize(MAX_FRAMES_BEING_PROCESSED);
+	mComputeCommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
 	commandBufAllocateInfo = {};
 	commandBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	commandBufAllocateInfo.commandPool = mCommandPool;
 	commandBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	commandBufAllocateInfo.commandBufferCount = (uint32_t)MAX_FRAMES_BEING_PROCESSED;
+	commandBufAllocateInfo.commandBufferCount = (uint32_t)MAX_FRAMES_IN_FLIGHT;
 
 	if (vkAllocateCommandBuffers(mLogicalDevice, &commandBufAllocateInfo, mComputeCommandBuffers.data()) != VK_SUCCESS)
 	{
@@ -1224,11 +1280,11 @@ bool VulkanManager::createSyncObjects()
 {
 	int numSwapChainImages = mSwapChainImages.size();
 
-	mImageAvailableSemaphores.resize(MAX_FRAMES_BEING_PROCESSED);
-	mWhileRenderingFences.resize(MAX_FRAMES_BEING_PROCESSED);
+	mImageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+	mWhileRenderingFences.resize(MAX_FRAMES_IN_FLIGHT);
 
-	mComputeFinishedSemaphores.resize(MAX_FRAMES_BEING_PROCESSED);
-	mWhileComputingFences.resize(MAX_FRAMES_BEING_PROCESSED);
+	mComputeFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+	mWhileComputingFences.resize(MAX_FRAMES_IN_FLIGHT);
 
 	//This is to stop unsafe reusage of semaphores: https://docs.vulkan.org/guide/latest/swapchain_semaphore_reuse.html
 	mRenderFinishedSemaphores.resize(numSwapChainImages);
@@ -1240,7 +1296,7 @@ bool VulkanManager::createSyncObjects()
 	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; //Makes it so first drawFrame does not block
 
-	for (size_t i = 0; i < MAX_FRAMES_BEING_PROCESSED; i++)
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
 		if (vkCreateSemaphore(mLogicalDevice, &semaphoreCreateInfo, nullptr, &mImageAvailableSemaphores[i]) != VK_SUCCESS
 			|| vkCreateFence(mLogicalDevice, &fenceCreateInfo, nullptr, &mWhileRenderingFences[i]) != VK_SUCCESS)

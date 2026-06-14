@@ -23,7 +23,10 @@
 #include "PipelineData.h"
 #include "Mesh/Mesh3D.h"
 #include "UniformBufferData.h"
+#include "UniformObjectHandlers/DescriptorPool.h"
 #include "Helpers/TextureImageHelpers.h"
+#include "UniformObjectHandlers/UniformObjects/UniformBufferDescriptor.h"
+#include "UniformObjectHandlers/UniformObjects/UniformImageDescriptor.h"
 
 #ifdef NDEBUG
 	const bool enableValidationLayers = false;
@@ -175,6 +178,7 @@ private:
 	PipelineData mPipelineData;
 	Mesh3D mVertexBufferData;
 	UniformBufferData mUniformBufferData;
+	DescriptorPool mDescriptorPool;
 
 	VkCommandPool mCommandPool;
 	std::vector<VkCommandBuffer> mGraphicsCommandBuffers;
@@ -189,7 +193,7 @@ private:
 	std::vector<VkSemaphore> mComputeFinishedSemaphores;
 	std::vector<VkFence> mWhileComputingFences;
 
-	const int MAX_FRAMES_BEING_PROCESSED = 2;
+	const int MAX_FRAMES_IN_FLIGHT = 2;
 	const int PARTICLE_COUNT = 256000;
 
 	uint32_t mCurrentFrame = 0;
@@ -214,6 +218,13 @@ private:
 	VkDeviceMemory mTextureMemory;
 	VkImageView mTextureImageView;
 	VkSampler mTextureSampler;
+
+	UniformBufferDescriptor des1;
+	UniformImageDescriptor des2;
+
+	UniformBufferDescriptor des3;
+	UniformBufferDescriptor des4;
+	UniformBufferDescriptor des5;
 
 	//Main depth attachment data
 	VkImage mDepthImage;
