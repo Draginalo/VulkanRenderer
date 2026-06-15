@@ -39,11 +39,13 @@ public:
 	bool createSSBOs(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, int maxFramesBeingProcessed, 
 		const int numParticles, float recipAspect, VkCommandPool commandPool, VkQueue submitQueue);
 
-	void updateUniformBuffer(int currFrame, float aspectRatio, float dt);
+	void updateUniformBuffers(int currFrame, float aspectRatio, float dt);
 	void bindGraphicsDescriptorSets(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, int currFrame);
 	void bindComputeDescriptorSets(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, int currFrame);
 
 	void bindSSBOs(VkCommandBuffer commandBuffer, int currFrame, int numParticles);
+	bool addDataToSSBOs(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, void* pData, 
+		UniformBufferDescriptor* pDescriptorData);
 
 	void cleanup(VkDevice logicalDevice);
 	inline VkDescriptorSetLayout getDescriptorSetLayout() { return mDescriptorSetLayout; }

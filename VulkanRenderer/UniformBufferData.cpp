@@ -144,36 +144,23 @@ bool UniformBufferData::createSSBOs(VkDevice logicalDevice, VkPhysicalDevice phy
 		particles[i].color = glm::vec3(rngRange(rngEngine), rngRange(rngEngine), rngRange(rngEngine));
 	}
 
-	VkDeviceSize bufferSize = sizeof(Particle2D) * numParticles;
-	VkBuffer stagingBuffer;
-	VkDeviceMemory stagingBufferMemory;
-
-	if (!createBuffer(logicalDevice, physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory))
-		{ return false; }
-
-	void* data;
-	vkMapMemory(logicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
-	memcpy(data, particles.data(), (size_t)bufferSize);
-	vkUnmapMemory(logicalDevice, stagingBufferMemory);
+	VkDeviceSize bufferSize = mDescriptorSetData.getTotalCombinedStorageBufferSize();
 
 	for (int i = 0; i < maxFramesBeingProcessed; i++)
 	{
+		//TODO: Add a way to set the flags like: VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
 		if (!createBuffer(logicalDevice, physicalDevice, bufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
 			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, 
 			mSSBOs[i], mSSBOsMemory[i]))
 			{ return false; }
-
-		copyBuffer(logicalDevice, stagingBuffer, mSSBOs[i], bufferSize, commandPool, submitQueue);
 	}
 
-	vkDestroyBuffer(logicalDevice, stagingBuffer, nullptr);
-	vkFreeMemory(logicalDevice, stagingBufferMemory, nullptr);
+	addDataToSSBOs(logicalDevice, physicalDevice, particles.data(), mDescriptorSetData.getComputeUniformBufferDescriptors()[2]);
 
 	return true;
 }
 
-void UniformBufferData::updateUniformBuffer(int currFrame, float aspectRatio, float dt)
+void UniformBufferData::updateUniformBuffers(int currFrame, float aspectRatio, float dt)
 {
 	static std::chrono::steady_clock::time_point startTime = std::chrono::high_resolution_clock::now();
 	std::chrono::steady_clock::time_point currentTime = std::chrono::high_resolution_clock::now();
@@ -220,6 +207,27 @@ void UniformBufferData::bindSSBOs(VkCommandBuffer commandBuffer, int currFrame, 
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &mSSBOs[currFrame], offsets);
 
 	vkCmdDraw(commandBuffer, numParticles, 1, 0, 0);
+}
+
+bool UniformBufferData::addDataToSSBOs(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, void* pData, 
+	UniformBufferDescriptor* pDescriptorData)
+{
+	if (pDescriptorData->getSourceFromPastFrame()) { 
+		std::cout << "\nCan't add data to previous frame data" << std::endl;
+		return false; 
+	}
+
+	size_t numBuffers = mSSBOsMemory.size();
+
+	for (int i = 0; i < numBuffers; i++)
+	{
+		void* bufferDataPointer;
+		vkMapMemory(logicalDevice, mSSBOsMemory[i], pDescriptorData->getOffset(), pDescriptorData->getDataSize(), 0, &bufferDataPointer);
+		memcpy(bufferDataPointer, pData, (size_t)pDescriptorData->getDataSize());
+		vkUnmapMemory(logicalDevice, mSSBOsMemory[i]);
+	}
+
+	return true;
 }
 
 void UniformBufferData::cleanup(VkDevice logicalDevice)

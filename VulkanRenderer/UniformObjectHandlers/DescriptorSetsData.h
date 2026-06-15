@@ -26,10 +26,15 @@ public:
 	void updateComputeBufferUniforms(void* destBuffer);
 
 	inline VkDeviceSize getTotalCombinedUniformBufferSize() { return mTotalUniformBufferSize + mTotalComputeUniformBufferSize; }
+	inline VkDeviceSize getTotalCombinedStorageBufferSize() { return mTotalStorageBufferSize + mTotalComputeStorageBufferSize; }
 private:
 	VkDescriptorPool mDescriptorPool;
+
 	VkDeviceSize mTotalUniformBufferSize = 0;
 	VkDeviceSize mTotalComputeUniformBufferSize = 0;
+
+	VkDeviceSize mTotalStorageBufferSize = 0;
+	VkDeviceSize mTotalComputeStorageBufferSize = 0;
 
 	std::vector<UniformBufferDescriptor*> mUniformBufferDescriptors;
 	std::vector<UniformImageDescriptor*> mUniformImageDescriptors;

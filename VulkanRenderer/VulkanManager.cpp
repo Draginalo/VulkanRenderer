@@ -197,7 +197,7 @@ bool VulkanManager::drawFrame(GLFWwindow* window, float dt, bool* needToReloadGU
 	//CPU waits until fence has been signaled by GPU (compute done from previous frame)
 	vkWaitForFences(mLogicalDevice, 1, &mWhileComputingFences[mCurrentFrame], VK_TRUE, UINT64_MAX);
 
-	mUniformBufferData.updateUniformBuffer(mCurrentFrame, mSwapChainImageExtent.width / (float)mSwapChainImageExtent.height, dt);
+	mUniformBufferData.updateUniformBuffers(mCurrentFrame, mSwapChainImageExtent.width / (float)mSwapChainImageExtent.height, dt);
 
 	//Only run compute shader when actually rendering the particles
 	if (mRenderingParticles)

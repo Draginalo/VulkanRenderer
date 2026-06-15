@@ -16,12 +16,32 @@ void DescriptorSetsData::loadDescriptorSets(std::vector<UniformBufferDescriptor*
 
 	for (int i = 0; i < numUniformBufferDescriptors; i++)
 	{
-		mTotalUniformBufferSize += uniformBufferDescriptors[i]->getDataSize();
+		//Ignores allocating memory for buffer taking data from previous frames (because that data will already be allocated)
+		if (computeUniformBufferDescriptors[i]->getSourceFromPastFrame()) { continue; }
+
+		if (uniformBufferDescriptors[i]->getDescriptorSetLayoutBinding().descriptorType != VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+		{
+			mTotalUniformBufferSize += uniformBufferDescriptors[i]->getDataSize();
+		}
+		else
+		{
+			mTotalStorageBufferSize += uniformBufferDescriptors[i]->getDataSize();
+		}
 	}
 
 	for (int i = 0; i < numComputeUniformBufferDescriptors; i++)
 	{
-		mTotalComputeUniformBufferSize += computeUniformBufferDescriptors[i]->getDataSize();
+		//Ignores allocating memory for buffer taking data from previous frames (because that data will already be allocated)
+		if (computeUniformBufferDescriptors[i]->getSourceFromPastFrame()) { continue; }
+
+		if (computeUniformBufferDescriptors[i]->getDescriptorSetLayoutBinding().descriptorType != VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+		{
+			mTotalComputeUniformBufferSize += computeUniformBufferDescriptors[i]->getDataSize();
+		}
+		else
+		{
+			mTotalComputeStorageBufferSize += computeUniformBufferDescriptors[i]->getDataSize();
+		}
 	}
 
 	mUniformBufferDescriptors = uniformBufferDescriptors;
