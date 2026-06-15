@@ -42,5 +42,10 @@ private:
 	std::vector<UniformBufferDescriptor*> mComputeUniformBufferDescriptors;
 	std::vector<UniformImageDescriptor*> mComputeUniformImageDescriptors;
 
+	/*
+	std::unordered_map<VkShaderStageFlagBits, std::vector<UniformBufferDescriptor*>> mUniformBufferDescriptorsMap;
+	std::unordered_map<VkShaderStageFlagBits, std::vector<UniformImageDescriptor*>> mUniformImageDescriptorsMap;
+	*/
+
 	std::vector<std::unordered_map<VkBuffer, uint32_t>> mBufferToOffset = {};
 };

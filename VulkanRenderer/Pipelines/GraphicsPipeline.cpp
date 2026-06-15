@@ -1,47 +1,7 @@
-#include "PipelineData.h"
-#include "UniformBufferData.h"
+#include "GraphicsPipeline.h"
+#include "../UniformBufferData.h"
 
-std::vector<char> PipelineData::readShaderFile(const char* filepath)
-{
-	std::ifstream file(filepath, std::ios::ate | std::ios::binary);
-	std::vector<char> buffer = {};
-
-	if (!file.is_open())
-	{
-		std::cout << "\nFailed to open file: " << filepath << std::endl;
-		return {};
-	}
-
-	size_t fileSize = (size_t)file.tellg();
-	buffer.resize(fileSize);
-
-	file.seekg(0);
-	file.read(buffer.data(), fileSize);
-
-	file.close();
-
-	return buffer;
-}
-
-VkShaderModule PipelineData::createShaderModule(VkDevice logicalDevice, const std::vector<char>& shaderByteCode)
-{
-	VkShaderModuleCreateInfo shaderModuleCreateInfo{};
-	shaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	shaderModuleCreateInfo.codeSize = shaderByteCode.size();
-	shaderModuleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(shaderByteCode.data());
-
-	VkShaderModule shaderModule;
-
-	if (vkCreateShaderModule(logicalDevice, &shaderModuleCreateInfo, nullptr, &shaderModule) != VK_SUCCESS)
-	{
-		std::cout << "\nFailed to create shader module..." << std::endl;
-		return nullptr;
-	}
-
-	return shaderModule;
-}
-
-bool PipelineData::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat,
+bool GraphicsPipeline::createPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat,
 	VkFormat depthAttachmentFormat, VkDescriptorSetLayout descriptorSetLayout, ConfigurablePipelineValues configValues,
 	const char* vertShaderFilepath, const char* fragShaderFilepath, VertexInputData vertexInputData)
 {
@@ -52,7 +12,7 @@ bool PipelineData::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D vie
 	pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 	pipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
 
-	if (vkCreatePipelineLayout(logicalDevice, &pipelineLayoutCreateInfo, nullptr, &mGraphicsPipelineLayout) != VK_SUCCESS)
+	if (vkCreatePipelineLayout(logicalDevice, &pipelineLayoutCreateInfo, nullptr, &mPipelineLayout) != VK_SUCCESS)
 	{
 		std::cout << "\nFailed to create graphics pipeline layout..." << std::endl;
 		return false;
@@ -196,7 +156,7 @@ bool PipelineData::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D vie
 	graphicsPipelineCreateInfo.pDepthStencilState = &depthStencilInfo;
 	graphicsPipelineCreateInfo.pColorBlendState = &blendStateCreateInfo;
 	graphicsPipelineCreateInfo.pDynamicState = &dynamicStateCreateInfo;
-	graphicsPipelineCreateInfo.layout = mGraphicsPipelineLayout;
+	graphicsPipelineCreateInfo.layout = mPipelineLayout;
 	graphicsPipelineCreateInfo.subpass = 0;
 	graphicsPipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 	graphicsPipelineCreateInfo.basePipelineIndex = -1;
@@ -212,7 +172,7 @@ bool PipelineData::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D vie
 	}
 
 	if (vkCreateGraphicsPipelines(logicalDevice, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, 
-		&mGraphicsPipeline) != VK_SUCCESS)
+		&mPipeline) != VK_SUCCESS)
 	{
 		std::cout << "\nFailed to create graphics pipeline..." << std::endl;
 		return false;
@@ -224,7 +184,7 @@ bool PipelineData::createGraphicsPipeline(VkDevice logicalDevice, VkExtent2D vie
 	return true;
 }
 
-bool PipelineData::createRenderPass(VkDevice logicalDevice, VkFormat colorAttachmentFormat, VkFormat depthAttachmentFormat, 
+bool GraphicsPipeline::createRenderPass(VkDevice logicalDevice, VkFormat colorAttachmentFormat, VkFormat depthAttachmentFormat, 
 	VkSampleCountFlagBits samples)
 {
 	VkAttachmentDescription colorAttachment{};
@@ -304,18 +264,14 @@ bool PipelineData::createRenderPass(VkDevice logicalDevice, VkFormat colorAttach
 	return true;
 }
 
-void PipelineData::cleanupPipeline(VkDevice logicalDevice)
+void GraphicsPipeline::cleanupPipeline(VkDevice logicalDevice)
 {
-	vkDestroyPipeline(logicalDevice, mGraphicsPipeline, nullptr);
-	vkDestroyPipelineLayout(logicalDevice, mGraphicsPipelineLayout, nullptr);
+	Pipeline::cleanupPipeline(logicalDevice);
 
 	cleanupRenderPass(logicalDevice);
-
-	vkDestroyPipeline(logicalDevice, mComputePipeline, nullptr);
-	vkDestroyPipelineLayout(logicalDevice, mComputePipelineLayout, nullptr);
 }
 
-bool PipelineData::createFramebuffers(VkDevice logicalDevice, std::vector<VkImageView> imageViews, VkImageView depthImageView, 
+bool GraphicsPipeline::createFramebuffers(VkDevice logicalDevice, std::vector<VkImageView> imageViews, VkImageView depthImageView,
 	VkImageView msaaImageView, VkExtent2D extent)
 {
 	int imageViewCount = imageViews.size();
@@ -345,7 +301,7 @@ bool PipelineData::createFramebuffers(VkDevice logicalDevice, std::vector<VkImag
 	return true;
 }
 
-void PipelineData::cleanupRenderPass(VkDevice logicalDevice)
+void GraphicsPipeline::cleanupRenderPass(VkDevice logicalDevice)
 {
 	if (mRenderPass != VK_NULL_HANDLE)
 	{
@@ -353,7 +309,7 @@ void PipelineData::cleanupRenderPass(VkDevice logicalDevice)
 	}
 }
 
-void PipelineData::cleanupFrambuffers(VkDevice logicalDevice)
+void GraphicsPipeline::cleanupFrambuffers(VkDevice logicalDevice)
 {
 	for (VkFramebuffer framebuffer : mFramebuffers)
 	{
@@ -363,7 +319,7 @@ void PipelineData::cleanupFrambuffers(VkDevice logicalDevice)
 	mFramebuffers.clear();
 }
 
-VkRenderPassBeginInfo PipelineData::getRenderPassBeginInfo(uint32_t framebufferIndex, VkExtent2D renderPassExtent,
+VkRenderPassBeginInfo GraphicsPipeline::getRenderPassBeginInfo(uint32_t framebufferIndex, VkExtent2D renderPassExtent,
 	std::array<VkClearValue, 2> clearValues)
 {
 	VkRenderPassBeginInfo renderPassBeginInfo{};
@@ -378,41 +334,7 @@ VkRenderPassBeginInfo PipelineData::getRenderPassBeginInfo(uint32_t framebufferI
 	return renderPassBeginInfo;
 }
 
-bool PipelineData::createComputePipeline(VkDevice logicalDevice, VkDescriptorSetLayout descriptorSetLayout)
+void GraphicsPipeline::bindPipeline(VkCommandBuffer commandBuffer)
 {
-	VkPipelineLayoutCreateInfo layoutInfo{};
-	layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	layoutInfo.setLayoutCount = 1;
-	layoutInfo.pSetLayouts = &descriptorSetLayout;
-
-	if (vkCreatePipelineLayout(logicalDevice, &layoutInfo, nullptr, &mComputePipelineLayout) != VK_SUCCESS)
-	{
-		std::cout << "\nFailed to create compute pipeline layout..." << std::endl;
-		return false;
-	}
-
-	auto computeShaderCode = readShaderFile("../Assets/Shaders/ByteEncoded/ComputeParticles_CS.spv");
-
-	VkShaderModule computeShaderModule = createShaderModule(logicalDevice, computeShaderCode);
-
-	VkPipelineShaderStageCreateInfo computeShaderStageInfo{};
-	computeShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	computeShaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-	computeShaderStageInfo.module = computeShaderModule;
-	computeShaderStageInfo.pName = "main";
-
-	VkComputePipelineCreateInfo pipelineInfo{};
-	pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-	pipelineInfo.layout = mComputePipelineLayout;
-	pipelineInfo.stage = computeShaderStageInfo;
-
-	if (vkCreateComputePipelines(logicalDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &mComputePipeline) != VK_SUCCESS)
-	{
-		std::cout << "\nFailed to create compute pipeline..." << std::endl;
-		return false;
-	}
-
-	vkDestroyShaderModule(logicalDevice, computeShaderModule, nullptr);
-
-	return true;
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipeline);
 }

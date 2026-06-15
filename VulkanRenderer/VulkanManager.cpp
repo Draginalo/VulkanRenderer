@@ -22,10 +22,10 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	createDepthResources();
 	createMSAA_ColorResources();
 
-	if (!mPipelineData.dynamicRenderingEnabled())
+	if (!mGraphicsPipeline.dynamicRenderingEnabled())
 	{
-		mPipelineData.createRenderPass(mLogicalDevice, mSwapChainImageFormat, mDepthFormat, mMSAA_Samples);
-		mPipelineData.createFramebuffers(mLogicalDevice, mSwapChainImageViews, mDepthImageView, mMSAA_ColorImageView, 
+		mGraphicsPipeline.createRenderPass(mLogicalDevice, mSwapChainImageFormat, mDepthFormat, mMSAA_Samples);
+		mGraphicsPipeline.createFramebuffers(mLogicalDevice, mSwapChainImageViews, mDepthImageView, mMSAA_ColorImageView, 
 			mSwapChainImageExtent);
 	}
 
@@ -110,9 +110,9 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 
 	VertexInputData vertexInputInfo = mRenderingParticles ? Particle2D::getParticleInputData() : mVertexBufferData.getVertexInputData();
 
-	mPipelineData.createGraphicsPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat,
+	mGraphicsPipeline.createPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat,
 		mUniformBufferData.getDescriptorSetLayout(), configValues, vertShader, fragShader, vertexInputInfo);
-	mPipelineData.createComputePipeline(mLogicalDevice, mUniformBufferData.getComputeDescriptorSetLayout());
+	mComputePipeline.creatPipeline(mLogicalDevice, mUniformBufferData.getComputeDescriptorSetLayout());
 
 	mUniformBufferData.createSSBOs(mLogicalDevice, mPhysicalDevice, MAX_FRAMES_IN_FLIGHT, PARTICLE_COUNT,
 		mSwapChainImageExtent.height / (float)mSwapChainImageExtent.width, mCommandPool, mGraphicsQueue);
@@ -173,7 +173,8 @@ bool VulkanManager::cleanupVulkan()
 	mUniformBufferData.cleanup(mLogicalDevice);
 	mDescriptorPool.cleanup(mLogicalDevice);
 	mVertexBufferData.cleanupBuffers(mLogicalDevice);
-	mPipelineData.cleanupPipeline(mLogicalDevice);
+	mGraphicsPipeline.cleanupPipeline(mLogicalDevice);
+	mComputePipeline.cleanupPipeline(mLogicalDevice);
 
 	vkDestroyDevice(mLogicalDevice, nullptr);
 
@@ -242,7 +243,7 @@ bool VulkanManager::drawFrame(GLFWwindow* window, float dt, bool* needToReloadGU
 	vkResetFences(mLogicalDevice, 1, &mWhileRenderingFences[mCurrentFrame]);
 	vkResetCommandBuffer(mGraphicsCommandBuffers[mCurrentFrame], 0);
 
-	if (mPipelineData.dynamicRenderingEnabled()) 
+	if (mGraphicsPipeline.dynamicRenderingEnabled()) 
 	{
 		renderScene_DynamicRendering(mGraphicsCommandBuffers[mCurrentFrame], imageIndex);
 	}
@@ -878,9 +879,9 @@ bool VulkanManager::recreateSwapChain(GLFWwindow* window)
 	createMSAA_ColorResources();
 	createDepthResources();
 
-	if (!mPipelineData.dynamicRenderingEnabled())
+	if (!mGraphicsPipeline.dynamicRenderingEnabled())
 	{
-		mPipelineData.createFramebuffers(mLogicalDevice, mSwapChainImageViews, mDepthImageView, mMSAA_ColorImageView, mSwapChainImageExtent);
+		mGraphicsPipeline.createFramebuffers(mLogicalDevice, mSwapChainImageViews, mDepthImageView, mMSAA_ColorImageView, mSwapChainImageExtent);
 	}
 
 	return false;
@@ -888,7 +889,7 @@ bool VulkanManager::recreateSwapChain(GLFWwindow* window)
 
 void VulkanManager::cleanupSwapChain()
 {
-	mPipelineData.cleanupFrambuffers(mLogicalDevice);
+	mGraphicsPipeline.cleanupFrambuffers(mLogicalDevice);
 
 	for (VkImageView imageView : mSwapChainImageViews)
 	{
@@ -1010,12 +1011,12 @@ bool VulkanManager::renderScene(VkCommandBuffer commandBuffer, uint32_t imageInd
 	clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
 	clearValues[1].depthStencil = { 1.0f, 0 };
 
-	VkRenderPassBeginInfo renderPassBeginInfo = mPipelineData.getRenderPassBeginInfo(imageIndex, mSwapChainImageExtent, 
+	VkRenderPassBeginInfo renderPassBeginInfo = mGraphicsPipeline.getRenderPassBeginInfo(imageIndex, mSwapChainImageExtent, 
 		clearValues);
 
 	vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineData.getGraphicsPipeline());
+	mGraphicsPipeline.bindPipeline(commandBuffer);
 
 	VkViewport viewport{};
 	viewport.x = 0.0f;
@@ -1033,7 +1034,7 @@ bool VulkanManager::renderScene(VkCommandBuffer commandBuffer, uint32_t imageInd
 
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-	mUniformBufferData.bindGraphicsDescriptorSets(commandBuffer, mPipelineData.getGraphicsPipelineLayout(), mCurrentFrame);
+	mUniformBufferData.bindGraphicsDescriptorSets(commandBuffer, mGraphicsPipeline.getPipelineLayout(), mCurrentFrame);
 	
 	if (mRenderingParticles)
 	{
@@ -1129,7 +1130,7 @@ bool VulkanManager::renderScene_DynamicRendering(VkCommandBuffer commandBuffer, 
 
 	fpCmdBeginRenderingKHR(commandBuffer, &renderingInfo);
 
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineData.getGraphicsPipeline());
+	mGraphicsPipeline.bindPipeline(commandBuffer);
 
 	VkViewport viewport{};
 	viewport.x = 0.0f;
@@ -1147,7 +1148,7 @@ bool VulkanManager::renderScene_DynamicRendering(VkCommandBuffer commandBuffer, 
 
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-	mUniformBufferData.bindGraphicsDescriptorSets(commandBuffer, mPipelineData.getGraphicsPipelineLayout(), mCurrentFrame);
+	mUniformBufferData.bindGraphicsDescriptorSets(commandBuffer, mGraphicsPipeline.getPipelineLayout(), mCurrentFrame);
 	
 	if (mRenderingParticles)
 	{
@@ -1186,8 +1187,8 @@ void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReload
 
 		mRenderingParticles = mSelectedScene.sceneType == PARTICLES;
 
-		vkDestroyPipeline(mLogicalDevice, mPipelineData.getGraphicsPipeline(), nullptr);
-		vkDestroyPipelineLayout(mLogicalDevice, mPipelineData.getGraphicsPipelineLayout(), nullptr);
+		vkDestroyPipeline(mLogicalDevice, mGraphicsPipeline.getPipeline(), nullptr);
+		vkDestroyPipelineLayout(mLogicalDevice, mGraphicsPipeline.getPipelineLayout(), nullptr);
 
 		ConfigurablePipelineValues configValues{};
 		configValues.samples = mMSAA_Samples;
@@ -1198,7 +1199,7 @@ void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReload
 		const char* fragShader = mRenderingParticles ? "../Assets/Shaders/ByteEncoded/RenderParticles_FS.spv" : "../Assets/Shaders/ByteEncoded/BasicTriangle_FS.spv";
 
 		VertexInputData vertexInputInfo = mRenderingParticles ? Particle2D::getParticleInputData() : mVertexBufferData.getVertexInputData();
-		mPipelineData.createGraphicsPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat,
+		mGraphicsPipeline.createPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat,
 			mUniformBufferData.getDescriptorSetLayout(), configValues, vertShader, fragShader, vertexInputInfo);
 
 		mRemakePipelineTriggered = false;
@@ -1209,22 +1210,22 @@ void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReload
 		//Waits for device to finish up before recreating pipeline
 		vkDeviceWaitIdle(mLogicalDevice);
 
-		vkDestroyPipeline(mLogicalDevice, mPipelineData.getGraphicsPipeline(), nullptr);
-		vkDestroyPipelineLayout(mLogicalDevice, mPipelineData.getGraphicsPipelineLayout(), nullptr);
+		vkDestroyPipeline(mLogicalDevice, mGraphicsPipeline.getPipeline(), nullptr);
+		vkDestroyPipelineLayout(mLogicalDevice, mGraphicsPipeline.getPipelineLayout(), nullptr);
 
-		mPipelineData.setDynamicRenderingEnabled(mUsingDynamicRenderingForGUI);
+		mGraphicsPipeline.setDynamicRenderingEnabled(mUsingDynamicRenderingForGUI);
 
 		//TODO: Add function in pipeline to switch from dynamic rfendering
 		if (!mUsingDynamicRenderingForGUI)
 		{
-			if (mPipelineData.getRenderPass() == VK_NULL_HANDLE)
+			if (mGraphicsPipeline.getRenderPass() == VK_NULL_HANDLE)
 			{
-				mPipelineData.createRenderPass(mLogicalDevice, mSwapChainImageFormat, mDepthFormat, mMSAA_Samples);
+				mGraphicsPipeline.createRenderPass(mLogicalDevice, mSwapChainImageFormat, mDepthFormat, mMSAA_Samples);
 			}
 
-			if (mPipelineData.noLoadedFramebuffers())
+			if (mGraphicsPipeline.noLoadedFramebuffers())
 			{
-				mPipelineData.createFramebuffers(mLogicalDevice, mSwapChainImageViews, mDepthImageView, mMSAA_ColorImageView,
+				mGraphicsPipeline.createFramebuffers(mLogicalDevice, mSwapChainImageViews, mDepthImageView, mMSAA_ColorImageView,
 					mSwapChainImageExtent);
 			}
 		}
@@ -1239,7 +1240,7 @@ void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReload
 
 		VertexInputData vertexInputInfo = mRenderingParticles ? Particle2D::getParticleInputData() : mVertexBufferData.getVertexInputData();
 
-		mPipelineData.createGraphicsPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat,
+		mGraphicsPipeline.createPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat,
 			mUniformBufferData.getDescriptorSetLayout(), configValues, vertShader, fragShader, vertexInputInfo);
 
 		mSwitchingRenderMethod = false;
@@ -1262,8 +1263,8 @@ bool VulkanManager::recordComputeCommandBuffer(VkCommandBuffer commandBuffer)
 		return false;
 	}
 
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, mPipelineData.getComputePipeline());
-	mUniformBufferData.bindComputeDescriptorSets(commandBuffer, mPipelineData.getComputePipelineLayout(), mCurrentFrame);
+	mComputePipeline.bindPipeline(commandBuffer);
+	mUniformBufferData.bindComputeDescriptorSets(commandBuffer, mComputePipeline.getPipelineLayout(), mCurrentFrame);
 
 	vkCmdDispatch(commandBuffer, PARTICLE_COUNT / 256, 1, 1);
 

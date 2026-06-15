@@ -20,7 +20,8 @@
 #include <algorithm>
 #include <string>
 
-#include "PipelineData.h"
+#include "Pipelines/GraphicsPipeline.h"
+#include "Pipelines/ComputePipeline.h"
 #include "Mesh/Mesh3D.h"
 #include "UniformBufferData.h"
 #include "UniformObjectHandlers/DescriptorPool.h"
@@ -102,8 +103,8 @@ public:
 	inline const VkFormat* getSwapChainImageFormatRef() { return &mSwapChainImageFormat; }
 	inline const VkFormat getDepthFormat() { return mDepthFormat; }
 	inline const VkSampleCountFlagBits getMSAA_Samples() { return mMSAA_Samples; }
-	inline PipelineData* getPipelineData() { return &mPipelineData; }
 	inline const VkQueue getGraphicsQueue() { return mGraphicsQueue; }
+	inline GraphicsPipeline* getGraphicsPipeline() { return &mGraphicsPipeline; }
 private:
 	bool createInstance();
 
@@ -175,7 +176,8 @@ private:
 	VkExtent2D mSwapChainImageExtent;
 	VkFormat mDepthFormat;
 
-	PipelineData mPipelineData;
+	GraphicsPipeline mGraphicsPipeline;
+	ComputePipeline mComputePipeline;
 	Mesh3D mVertexBufferData;
 	UniformBufferData mUniformBufferData;
 	DescriptorPool mDescriptorPool;

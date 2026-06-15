@@ -3,7 +3,7 @@
 #include "vulkan/vulkan.h"
 #include <glm/glm.hpp>
 
-#include "PipelineData.h"
+#include "Pipelines//GraphicsPipeline.h"
 #include "Mesh/Mesh3D.h"
 #include "UniformBufferData.h"
 
@@ -21,7 +21,7 @@ public:
 	
 
 private:
-	PipelineData* mPipelineData;
+	GraphicsPipeline* mpGraphicsPipeline;
 	Mesh3D* meshToRender;
 
 	Transform mTranform;
