@@ -1,11 +1,16 @@
 #include "ComputePipeline.h"
 
-bool ComputePipeline::creatPipeline(VkDevice logicalDevice, VkDescriptorSetLayout descriptorSetLayout)
+bool ComputePipeline::creatPipeline(VkDevice logicalDevice)
 {
+	if (*mPipelineDescriptorSetData.getDescriptorSetLayout() == VK_NULL_HANDLE) 
+	{
+		throw std::runtime_error("The pipeline descriptor set data must be added and initialized prior to creating the pipeline...");
+	}
+
 	VkPipelineLayoutCreateInfo layoutInfo{};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	layoutInfo.setLayoutCount = 1;
-	layoutInfo.pSetLayouts = &descriptorSetLayout;
+	layoutInfo.pSetLayouts = mPipelineDescriptorSetData.getDescriptorSetLayout();
 
 	if (vkCreatePipelineLayout(logicalDevice, &layoutInfo, nullptr, &mPipelineLayout) != VK_SUCCESS)
 	{

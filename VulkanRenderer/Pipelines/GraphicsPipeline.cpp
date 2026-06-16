@@ -2,15 +2,20 @@
 #include "../UniformDescriptorManager.h"
 
 bool GraphicsPipeline::createPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat,
-	VkFormat depthAttachmentFormat, VkDescriptorSetLayout descriptorSetLayout, ConfigurablePipelineValues configValues,
+	VkFormat depthAttachmentFormat, ConfigurablePipelineValues configValues,
 	const char* vertShaderFilepath, const char* fragShaderFilepath, VertexInputData vertexInputData)
 {
+	if (*mPipelineDescriptorSetData.getDescriptorSetLayout() == VK_NULL_HANDLE)
+	{
+		throw std::runtime_error("The pipeline descriptor set data must be added and initialized prior to creating the pipeline...");
+	}
+
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
 	pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutCreateInfo.setLayoutCount = 1;
 	pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
 	pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
-	pipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
+	pipelineLayoutCreateInfo.pSetLayouts = mPipelineDescriptorSetData.getDescriptorSetLayout();
 
 	if (vkCreatePipelineLayout(logicalDevice, &pipelineLayoutCreateInfo, nullptr, &mPipelineLayout) != VK_SUCCESS)
 	{

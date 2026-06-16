@@ -14,6 +14,7 @@
 
 #include "Helpers/VertexInputData.h"
 #include "UniformObjectHandlers/DescriptorSetData.h"
+#include "Pipelines/Pipeline.h"
 
 //Uniform buffer struct for mvp matrecies with explicit alignment specefied to match shader uniform alignment
 // Could also use #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES but does not always catch alignment for nested structs
@@ -29,13 +30,12 @@ struct DeltaTimeUniformObject {
 
 class UniformDescriptorManager {
 public:
-	void createPipelineSpecificDescriptorSets(std::vector<DescriptorSetData*> descriptorSets, VkDevice logicalDevice,
-		VkPhysicalDevice physicalDevice, VkDescriptorPool descriptorPool, int maxFramesBeingProcessed, 
-		const int numParticles, float recipAspect);
+	void createPipelineSpecificDescriptorSets(std::vector<Pipeline*> pipelines, VkDevice logicalDevice,
+		VkPhysicalDevice physicalDevice, VkDescriptorPool descriptorPool, int maxFramesBeingProcessed);
 
-	void updatePipelineSpecificUniformBuffers(int currFrame, float aspectRatio, float dt);
-	void bindGraphicsDescriptorSets(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, int currFrame);
-	void bindComputeDescriptorSets(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, int currFrame);
+	void updatePipelineSpecificUniformBuffers(Pipeline* graphicsPipeline, Pipeline* computePipeline, int currFrame, 
+		float aspectRatio, float dt);
+	void bindPipelineSpecificDescriptorSet(VkCommandBuffer commandBuffer, Pipeline* pipeline, int currFrame);
 
 	void bindSSBOs(VkCommandBuffer commandBuffer, int currFrame, int numParticles);
 	bool addDataToSSBOs(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, void* pData, 
@@ -43,22 +43,20 @@ public:
 
 	void cleanup(VkDevice logicalDevice);
 
-	inline DescriptorSetData* getPipelineSpecificDescriptorSet(VkPipeline pipeline, int index = 0) 
-	{ return mPipelineSpecificDescriptorSets[index]; };
+	inline const DescriptorSetData* getPipelineSpecificDescriptorSet(Pipeline* pipeline)
+	{ return mPipelineSpecificDescriptorSets[pipeline->getPipelineID()]; };
 private:
 	bool createUniformBuffers(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkDeviceSize bufferSize,
 		int maxFramesBeingProcessed);
 
-	bool createSSBOs(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkDeviceSize bufferSize, int maxFramesBeingProcessed,
-		const int numParticles, float recipAspect);
+	bool createSSBOs(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkDeviceSize bufferSize, int maxFramesBeingProcessed);
 
 	std::vector<VkBuffer> mUniformBuffers;
 	std::vector<VkDeviceMemory> mUniformBuffersMemory;
 	std::vector<void*> mUniformBuffersMapped;
 
 	std::vector<VkDescriptorSet> mGlobalDescriptorSets;
-	std::vector<DescriptorSetData*> mPipelineSpecificDescriptorSets;
-	//std::unordered_map<VkPipeline, std::vector<DescriptorSetData*>> mPipelineSpecificDescriptorSets;
+	std::unordered_map<uint32_t, const DescriptorSetData*> mPipelineSpecificDescriptorSets;
 	//std::unordered_map<Material, std::vector<VkDescriptorSet>> mMaterialSpeecificDescriptorSets;
 	//std::unordered_map<GameObject, std::vector<VkDescriptorSet>> mMaterialSpeecificDescriptorSets;
 

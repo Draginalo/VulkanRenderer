@@ -9,7 +9,9 @@
 
 class ComputePipeline : public Pipeline {
 public:
-	bool creatPipeline(VkDevice logicalDevice, VkDescriptorSetLayout descriptorSetLayout);
+	ComputePipeline() : Pipeline(true) {}
+
+	bool creatPipeline(VkDevice logicalDevice);
 	void bindPipeline(VkCommandBuffer commandBuffer) override;
 private:
 };

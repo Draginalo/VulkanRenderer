@@ -1,5 +1,7 @@
 #include "Pipeline.h"
 
+uint32_t Pipeline::mNumPipelineInstances = 0;
+
 std::vector<char> Pipeline::readShaderFile(const char* filepath)
 {
 	std::ifstream file(filepath, std::ios::ate | std::ios::binary);

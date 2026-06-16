@@ -19,7 +19,7 @@ struct ConfigurablePipelineValues {
 class GraphicsPipeline : public Pipeline {
 public:
 	bool createPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat, 
-		VkFormat depthAttachmentFormat, VkDescriptorSetLayout descriptorSetLayout, ConfigurablePipelineValues configValues,
+		VkFormat depthAttachmentFormat, ConfigurablePipelineValues configValues,
 		const char* vertShaderFilepath, const char* fragShaderFilepath, VertexInputData vertexInputData);
 	bool createRenderPass(VkDevice logicalDevice, VkFormat colorAttachmentFormat, VkFormat depthAttachmentFormat,
 		VkSampleCountFlagBits samples);

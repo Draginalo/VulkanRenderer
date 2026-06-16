@@ -146,7 +146,7 @@ std::vector<VkWriteDescriptorSet> DescriptorSetData::getWriteDescriptorSets(VkDe
 	return writes;
 }
 
-void DescriptorSetData::updateBufferUniforms(void* destBuffer)
+void DescriptorSetData::updateBufferUniforms(void* destBuffer) const
 {
 	size_t numObjects = mUniformBufferDescriptors.size();
 

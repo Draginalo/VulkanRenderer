@@ -221,8 +221,6 @@ private:
 	VkImageView mTextureImageView;
 	VkSampler mTextureSampler;
 
-	DescriptorSetData mGraphicsPipelineDescriptorSet;
-	DescriptorSetData mComputePipelineDescriptorSet;
 	UniformBufferDescriptor des1;
 	UniformImageDescriptor des2;
 	UniformBufferDescriptor des3;
