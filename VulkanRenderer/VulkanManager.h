@@ -23,7 +23,7 @@
 #include "Pipelines/GraphicsPipeline.h"
 #include "Pipelines/ComputePipeline.h"
 #include "Mesh/Mesh3D.h"
-#include "UniformBufferData.h"
+#include "UniformDescriptorManager.h"
 #include "UniformObjectHandlers/DescriptorPool.h"
 #include "Helpers/TextureImageHelpers.h"
 #include "UniformObjectHandlers/UniformObjects/UniformBufferDescriptor.h"
@@ -179,7 +179,7 @@ private:
 	GraphicsPipeline mGraphicsPipeline;
 	ComputePipeline mComputePipeline;
 	Mesh3D mVertexBufferData;
-	UniformBufferData mUniformBufferData;
+	UniformDescriptorManager mUniformDescriptorManager;
 	DescriptorPool mDescriptorPool;
 
 	VkCommandPool mCommandPool;
@@ -221,9 +221,10 @@ private:
 	VkImageView mTextureImageView;
 	VkSampler mTextureSampler;
 
+	DescriptorSetData mGraphicsPipelineDescriptorSet;
+	DescriptorSetData mComputePipelineDescriptorSet;
 	UniformBufferDescriptor des1;
 	UniformImageDescriptor des2;
-
 	UniformBufferDescriptor des3;
 	UniformBufferDescriptor des4;
 	UniformBufferDescriptor des5;

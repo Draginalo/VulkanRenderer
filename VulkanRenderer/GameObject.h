@@ -5,7 +5,7 @@
 
 #include "Pipelines//GraphicsPipeline.h"
 #include "Mesh/Mesh3D.h"
-#include "UniformBufferData.h"
+#include "UniformDescriptorManager.h"
 
 struct Transform {
 	glm::vec3 position;
@@ -25,5 +25,5 @@ private:
 	Mesh3D* meshToRender;
 
 	Transform mTranform;
-	UniformBufferData mUniformBufferData;
+	UniformDescriptorManager mUniformDescriptorManager;
 };

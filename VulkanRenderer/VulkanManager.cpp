@@ -53,7 +53,6 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 
 	mDescriptorPool.createDescriptorPool(mLogicalDevice, descPoolCreateInfo);
 
-	DescriptorSetsData descriptorData{};
 	std::vector<UniformBufferDescriptor*> descriptos;
 
 	des1.setDstBinding(0);
@@ -92,11 +91,11 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	des2.setDstBinding(1);
 	descriptos1.push_back(&des2);
 
-	descriptorData.loadDescriptorSets(descriptos, descriptos1, descriptos2, descriptos3, MAX_FRAMES_IN_FLIGHT);
-	mUniformBufferData.setDescriptorSetData(descriptorData);
-
-	mUniformBufferData.createDescriptorSetLayout(mLogicalDevice);
-	mUniformBufferData.createComputeDescriptorSetLayout(mLogicalDevice);
+	mGraphicsPipelineDescriptorSet.loadDescriptors(descriptos, descriptos1, MAX_FRAMES_IN_FLIGHT);
+	mComputePipelineDescriptorSet.loadDescriptors(descriptos2, descriptos3, MAX_FRAMES_IN_FLIGHT);
+	mUniformDescriptorManager.createPipelineSpecificDescriptorSets({&mGraphicsPipelineDescriptorSet, &mComputePipelineDescriptorSet}, 
+		mLogicalDevice, mPhysicalDevice, mDescriptorPool.getDescriptorPool(), MAX_FRAMES_IN_FLIGHT, PARTICLE_COUNT,
+		mSwapChainImageExtent.height / (float)mSwapChainImageExtent.width);
 
 	mVertexBufferData.createVertexDataFromModel(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue, "../Assets/Models/Room/room.obj");
 
@@ -111,17 +110,9 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	VertexInputData vertexInputInfo = mRenderingParticles ? Particle2D::getParticleInputData() : mVertexBufferData.getVertexInputData();
 
 	mGraphicsPipeline.createPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat,
-		mUniformBufferData.getDescriptorSetLayout(), configValues, vertShader, fragShader, vertexInputInfo);
-	mComputePipeline.creatPipeline(mLogicalDevice, mUniformBufferData.getComputeDescriptorSetLayout());
-
-	mUniformBufferData.createSSBOs(mLogicalDevice, mPhysicalDevice, MAX_FRAMES_IN_FLIGHT, PARTICLE_COUNT,
-		mSwapChainImageExtent.height / (float)mSwapChainImageExtent.width, mCommandPool, mGraphicsQueue);
-
-	mUniformBufferData.createUniformBuffers(mLogicalDevice, mPhysicalDevice, MAX_FRAMES_IN_FLIGHT);
-
-	mUniformBufferData.createDescriptorSetsData(mLogicalDevice, mDescriptorPool.getDescriptorPool(), MAX_FRAMES_IN_FLIGHT);
-	mUniformBufferData.createComputeDescriptorSets(mLogicalDevice, mDescriptorPool.getDescriptorPool(), MAX_FRAMES_IN_FLIGHT, 
-		PARTICLE_COUNT);
+		mUniformDescriptorManager.getPipelineSpecificDescriptorSet({}, 0)->getDescriptorSetLayout(), configValues, vertShader, fragShader, 
+		vertexInputInfo);
+	mComputePipeline.creatPipeline(mLogicalDevice, mUniformDescriptorManager.getPipelineSpecificDescriptorSet({}, 1)->getDescriptorSetLayout());
 
 	createCommandBuffers();
 	createSyncObjects();
@@ -170,7 +161,7 @@ bool VulkanManager::cleanupVulkan()
 	vkDestroyImage(mLogicalDevice, mMSAA_ColorImage, nullptr);
 	vkFreeMemory(mLogicalDevice, mMSAA_ColorhMemory, nullptr);
 
-	mUniformBufferData.cleanup(mLogicalDevice);
+	mUniformDescriptorManager.cleanup(mLogicalDevice);
 	mDescriptorPool.cleanup(mLogicalDevice);
 	mVertexBufferData.cleanupBuffers(mLogicalDevice);
 	mGraphicsPipeline.cleanupPipeline(mLogicalDevice);
@@ -198,7 +189,7 @@ bool VulkanManager::drawFrame(GLFWwindow* window, float dt, bool* needToReloadGU
 	//CPU waits until fence has been signaled by GPU (compute done from previous frame)
 	vkWaitForFences(mLogicalDevice, 1, &mWhileComputingFences[mCurrentFrame], VK_TRUE, UINT64_MAX);
 
-	mUniformBufferData.updateUniformBuffers(mCurrentFrame, mSwapChainImageExtent.width / (float)mSwapChainImageExtent.height, dt);
+	mUniformDescriptorManager.updatePipelineSpecificUniformBuffers(mCurrentFrame, mSwapChainImageExtent.width / (float)mSwapChainImageExtent.height, dt);
 
 	//Only run compute shader when actually rendering the particles
 	if (mRenderingParticles)
@@ -1034,11 +1025,11 @@ bool VulkanManager::renderScene(VkCommandBuffer commandBuffer, uint32_t imageInd
 
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-	mUniformBufferData.bindGraphicsDescriptorSets(commandBuffer, mGraphicsPipeline.getPipelineLayout(), mCurrentFrame);
+	mUniformDescriptorManager.bindGraphicsDescriptorSets(commandBuffer, mGraphicsPipeline.getPipelineLayout(), mCurrentFrame);
 	
 	if (mRenderingParticles)
 	{
-		mUniformBufferData.bindSSBOs(commandBuffer, mCurrentFrame, PARTICLE_COUNT);
+		mUniformDescriptorManager.bindSSBOs(commandBuffer, mCurrentFrame, PARTICLE_COUNT);
 	}
 	else 
 	{
@@ -1148,11 +1139,11 @@ bool VulkanManager::renderScene_DynamicRendering(VkCommandBuffer commandBuffer, 
 
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-	mUniformBufferData.bindGraphicsDescriptorSets(commandBuffer, mGraphicsPipeline.getPipelineLayout(), mCurrentFrame);
+	mUniformDescriptorManager.bindGraphicsDescriptorSets(commandBuffer, mGraphicsPipeline.getPipelineLayout(), mCurrentFrame);
 	
 	if (mRenderingParticles)
 	{
-		mUniformBufferData.bindSSBOs(commandBuffer, mCurrentFrame, PARTICLE_COUNT);
+		mUniformDescriptorManager.bindSSBOs(commandBuffer, mCurrentFrame, PARTICLE_COUNT);
 	}
 	else 
 	{
@@ -1200,7 +1191,8 @@ void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReload
 
 		VertexInputData vertexInputInfo = mRenderingParticles ? Particle2D::getParticleInputData() : mVertexBufferData.getVertexInputData();
 		mGraphicsPipeline.createPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat,
-			mUniformBufferData.getDescriptorSetLayout(), configValues, vertShader, fragShader, vertexInputInfo);
+			mUniformDescriptorManager.getPipelineSpecificDescriptorSet({}, 0)->getDescriptorSetLayout(), configValues, vertShader, fragShader, 
+			vertexInputInfo);
 
 		mRemakePipelineTriggered = false;
 	}
@@ -1241,7 +1233,8 @@ void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReload
 		VertexInputData vertexInputInfo = mRenderingParticles ? Particle2D::getParticleInputData() : mVertexBufferData.getVertexInputData();
 
 		mGraphicsPipeline.createPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat,
-			mUniformBufferData.getDescriptorSetLayout(), configValues, vertShader, fragShader, vertexInputInfo);
+			mUniformDescriptorManager.getPipelineSpecificDescriptorSet({}, 0)->getDescriptorSetLayout(), configValues, vertShader, fragShader, 
+			vertexInputInfo);
 
 		mSwitchingRenderMethod = false;
 
@@ -1264,7 +1257,7 @@ bool VulkanManager::recordComputeCommandBuffer(VkCommandBuffer commandBuffer)
 	}
 
 	mComputePipeline.bindPipeline(commandBuffer);
-	mUniformBufferData.bindComputeDescriptorSets(commandBuffer, mComputePipeline.getPipelineLayout(), mCurrentFrame);
+	mUniformDescriptorManager.bindComputeDescriptorSets(commandBuffer, mComputePipeline.getPipelineLayout(), mCurrentFrame);
 
 	vkCmdDispatch(commandBuffer, PARTICLE_COUNT / 256, 1, 1);
 

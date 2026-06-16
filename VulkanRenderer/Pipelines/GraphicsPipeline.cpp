@@ -1,5 +1,5 @@
 #include "GraphicsPipeline.h"
-#include "../UniformBufferData.h"
+#include "../UniformDescriptorManager.h"
 
 bool GraphicsPipeline::createPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat,
 	VkFormat depthAttachmentFormat, VkDescriptorSetLayout descriptorSetLayout, ConfigurablePipelineValues configValues,
