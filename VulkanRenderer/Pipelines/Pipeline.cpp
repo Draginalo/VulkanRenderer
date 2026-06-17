@@ -41,3 +41,17 @@ VkShaderModule Pipeline::createShaderModule(VkDevice logicalDevice, const std::v
 
 	return shaderModule;
 }
+
+void Pipeline::createPipelineMaterial(std::vector<UniformBufferDescriptor> uniformBufferDescriptors,
+	std::vector<UniformImageDescriptor> uniformImageDescriptors, VkDevice logicalDevice, VkDescriptorPool descriptorPool,
+	BufferData* destUniformBuffers, BufferData* destStorageBuffers, int maxFramesInFlight)
+{
+	for (const UniformBufferDescriptor& baseBufferDescriptor : (*mBaseMaterialDescriptorSetData.getUniformBufferDescriptors()))
+	{
+		if (std::find(uniformBufferDescriptors.begin(), uniformBufferDescriptors.end(), baseBufferDescriptor) == 
+			uniformBufferDescriptors.end())
+		{
+			throw std::runtime_error("New material does not follow base material descriptor types");
+		}
+	}
+}

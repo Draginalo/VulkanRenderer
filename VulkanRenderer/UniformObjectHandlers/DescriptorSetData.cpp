@@ -1,7 +1,7 @@
 #include "DescriptorSetData.h"
 
-void DescriptorSetData::loadDescriptors(std::vector<UniformBufferDescriptor*> uniformBufferDescriptors, 
-	std::vector<UniformImageDescriptor*> uniformImageDescriptors, int maxFramesInFlight)
+void DescriptorSetData::loadDescriptors(std::vector<UniformBufferDescriptor> uniformBufferDescriptors, 
+	std::vector<UniformImageDescriptor> uniformImageDescriptors, int maxFramesInFlight)
 {
 	size_t numUniformBufferDescriptors = uniformBufferDescriptors.size();
 	mTotalUniformBufferSize = 0;
@@ -9,15 +9,15 @@ void DescriptorSetData::loadDescriptors(std::vector<UniformBufferDescriptor*> un
 	for (int i = 0; i < numUniformBufferDescriptors; i++)
 	{
 		//Ignores allocating memory for buffer taking data from previous frames (because that data will already be allocated)
-		if (uniformBufferDescriptors[i]->getSourceFromPastFrame()) { continue; }
+		if (uniformBufferDescriptors[i].getSourceFromPastFrame()) { continue; }
 
-		if (uniformBufferDescriptors[i]->getDescriptorSetLayoutBinding().descriptorType != VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+		if (uniformBufferDescriptors[i].getDescriptorSetLayoutBinding().descriptorType != VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
 		{
-			mTotalUniformBufferSize += uniformBufferDescriptors[i]->getDataSize();
+			mTotalUniformBufferSize += uniformBufferDescriptors[i].getDataSize();
 		}
 		else
 		{
-			mTotalStorageBufferSize += uniformBufferDescriptors[i]->getDataSize();
+			mTotalStorageBufferSize += uniformBufferDescriptors[i].getDataSize();
 		}
 	}
 
@@ -42,17 +42,17 @@ bool DescriptorSetData::createDescriptorSetLayout(VkDevice logicalDevice)
 }
 
 bool DescriptorSetData::createDescriptorSetData(VkDevice logicalDevice, VkDescriptorPool descriptorPool,
-	BufferData* destUniformBuffers, BufferData* destStorageBuffers, int maxFramesBeingProcessed)
+	BufferData* destUniformBuffers, BufferData* destStorageBuffers, int maxFramesInFlight)
 {
-	std::vector<VkDescriptorSetLayout> layouts(maxFramesBeingProcessed, mDescriptorSetLayout);
+	std::vector<VkDescriptorSetLayout> layouts(maxFramesInFlight, mDescriptorSetLayout);
 
 	VkDescriptorSetAllocateInfo setAllocateInfo{};
 	setAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	setAllocateInfo.descriptorPool = descriptorPool;
-	setAllocateInfo.descriptorSetCount = static_cast<uint32_t>(maxFramesBeingProcessed);
+	setAllocateInfo.descriptorSetCount = static_cast<uint32_t>(maxFramesInFlight);
 	setAllocateInfo.pSetLayouts = layouts.data();
 
-	mDescriptorSets.resize(maxFramesBeingProcessed);
+	mDescriptorSets.resize(maxFramesInFlight);
 
 	if (vkAllocateDescriptorSets(logicalDevice, &setAllocateInfo, mDescriptorSets.data()) != VK_SUCCESS)
 	{
@@ -63,7 +63,7 @@ bool DescriptorSetData::createDescriptorSetData(VkDevice logicalDevice, VkDescri
 
 	uint32_t destUniformAllocSize = destUniformBuffers->currentlyAllocatedSize;
 	uint32_t destStorageAllocSize = destStorageBuffers->currentlyAllocatedSize;
-	for (int i = 0; i < maxFramesBeingProcessed; i++)
+	for (int i = 0; i < maxFramesInFlight; i++)
 	{
 		//Resets allocations for each frame (cuz each frame uses a different buffer)
 		destUniformBuffers->currentlyAllocatedSize = destUniformAllocSize;
@@ -81,21 +81,21 @@ bool DescriptorSetData::createDescriptorSetData(VkDevice logicalDevice, VkDescri
 
 std::vector<VkDescriptorSetLayoutBinding> DescriptorSetData::getLayoutBindings()
 {
-	size_t numUniformBuffers = mUniformBufferDescriptors.size();
+	size_t numPipelineUniformBuffers = mUniformBufferDescriptors.size();
 	size_t numUniformImages = mUniformImageDescriptors.size();
 	int index = 0;
 
-	std::vector<VkDescriptorSetLayoutBinding> layoutBindings(numUniformBuffers + numUniformImages);
+	std::vector<VkDescriptorSetLayoutBinding> layoutBindings(numPipelineUniformBuffers + numUniformImages);
 
-	for (int i = 0; i < numUniformBuffers; i++)
+	for (int i = 0; i < numPipelineUniformBuffers; i++)
 	{
-		layoutBindings[index] = mUniformBufferDescriptors[i]->getDescriptorSetLayoutBinding();
+		layoutBindings[index] = mUniformBufferDescriptors[i].getDescriptorSetLayoutBinding();
 		index++;
 	}
 
 	for (int i = 0; i < numUniformImages; i++)
 	{
-		layoutBindings[index] = mUniformImageDescriptors[i]->getDescriptorSetLayoutBinding();
+		layoutBindings[index] = mUniformImageDescriptors[i].getDescriptorSetLayoutBinding();
 		index++;
 	}
 
@@ -105,25 +105,25 @@ std::vector<VkDescriptorSetLayoutBinding> DescriptorSetData::getLayoutBindings()
 std::vector<VkWriteDescriptorSet> DescriptorSetData::getWriteDescriptorSets(VkDescriptorSet destSet, BufferData* destUniformBuffers, 
 	BufferData* destStorageBuffers, size_t currFrame)
 {
-	size_t numUniformBuffers = mUniformBufferDescriptors.size();
+	size_t numPipelineUniformBuffers = mUniformBufferDescriptors.size();
 	size_t numUniformImages = mUniformImageDescriptors.size();
 	int index = 0;
 
-	std::vector<VkWriteDescriptorSet> writes(numUniformBuffers + numUniformImages);
+	std::vector<VkWriteDescriptorSet> writes(numPipelineUniformBuffers + numUniformImages);
 
-	for (int i = 0; i < numUniformBuffers; i++)
+	for (int i = 0; i < numPipelineUniformBuffers; i++)
 	{
 		VkDescriptorBufferInfo bufferInfo{};
-		bufferInfo.range = mUniformBufferDescriptors[i]->getDataSize();
+		bufferInfo.range = mUniformBufferDescriptors[i].getDataSize();
 
-		BufferData* bufferData = mUniformBufferDescriptors[i]->getDescriptorSetLayoutBinding().descriptorType ==
+		BufferData* bufferData = mUniformBufferDescriptors[i].getDescriptorSetLayoutBinding().descriptorType ==
 			VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ? destStorageBuffers : destUniformBuffers;
 
 		bufferInfo.offset = bufferData->currentlyAllocatedSize;
 
 		size_t sourceFrame = (currFrame - 1) % destStorageBuffers->buffers.size();
 
-		if (!mUniformBufferDescriptors[i]->getSourceFromPastFrame())
+		if (!mUniformBufferDescriptors[i].getSourceFromPastFrame())
 		{
 			sourceFrame = currFrame;
 			bufferData->currentlyAllocatedSize += bufferInfo.range;
@@ -131,15 +131,15 @@ std::vector<VkWriteDescriptorSet> DescriptorSetData::getWriteDescriptorSets(VkDe
 
 		bufferInfo.buffer = bufferData->buffers[sourceFrame];
 
-		mUniformBufferDescriptors[i]->setBufferInfo(bufferInfo);
-		writes[index] = mUniformBufferDescriptors[i]->getWriteDescriptorSet(destSet);
+		mUniformBufferDescriptors[i].setBufferInfo(bufferInfo);
+		writes[index] = mUniformBufferDescriptors[i].getWriteDescriptorSet(destSet);
 
 		index++;
 	}
 
 	for (int i = 0; i < numUniformImages; i++)
 	{
-		writes[index] = mUniformImageDescriptors[i]->getWriteDescriptorSet(destSet);
+		writes[index] = mUniformImageDescriptors[i].getWriteDescriptorSet(destSet);
 		index++;
 	}
 
@@ -152,13 +152,13 @@ void DescriptorSetData::updateBufferUniforms(void* destBuffer) const
 
 	for (int i = 0; i < numObjects; i++)
 	{
-		if (mUniformBufferDescriptors[i]->getUniformType() != VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) 
+		if (mUniformBufferDescriptors[i].getUniformType() != VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
 		{
 			//Converts pointer to start of destbuffer to a byte array and then offsets it to the proper data segment in the buffer
 			uint8_t* bufferDataPointerOffset = static_cast<uint8_t*>(destBuffer) +
-				static_cast<size_t>(mUniformBufferDescriptors[i]->getOffset());
+				static_cast<size_t>(mUniformBufferDescriptors[i].getOffset());
 
-			memcpy(bufferDataPointerOffset, mUniformBufferDescriptors[i]->getDataPointer(), mUniformBufferDescriptors[i]->getDataSize());
+			memcpy(bufferDataPointerOffset, mUniformBufferDescriptors[i].getDataPointer(), mUniformBufferDescriptors[i].getDataSize());
 		}
 	}
 }

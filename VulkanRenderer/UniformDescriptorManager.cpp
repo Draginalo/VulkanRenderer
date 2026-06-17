@@ -2,7 +2,7 @@
 #include "Helpers/BufferHelpers.h"
 
 void UniformDescriptorManager::createPipelineSpecificDescriptorSets(std::vector<Pipeline*> pipelines, VkDevice logicalDevice,
-	VkPhysicalDevice physicalDevice, VkDescriptorPool descriptorPool, int maxFramesBeingProcessed)
+	VkPhysicalDevice physicalDevice, VkDescriptorPool descriptorPool, int maxFramesInFlight)
 {
 	int numSets = pipelines.size();
 	VkDeviceSize totalUniformBuffersSize = 0;
@@ -10,46 +10,46 @@ void UniformDescriptorManager::createPipelineSpecificDescriptorSets(std::vector<
 
 	for (int i = 0; i < numSets; i++)
 	{
-		//Check if already added pipeline descriptor set data
-		if (mPipelineSpecificDescriptorSets.find(pipelines[i]->getPipelineID()) != mPipelineSpecificDescriptorSets.end()) { continue; }
-
-		mPipelineSpecificDescriptorSets[pipelines[i]->getPipelineID()] = pipelines[i]->getPipelineDescriptorSetData();
 		pipelines[i]->createPipelineDescriptorSetLayout(logicalDevice);
 
 		totalUniformBuffersSize += pipelines[i]->getPipelineDescriptorSetData()->getTotalUniformBufferSize();
 		totalStorageBuffersSize += pipelines[i]->getPipelineDescriptorSetData()->getTotalStorageBufferSize();
 	}
 
-	createUniformBuffers(logicalDevice, physicalDevice, totalUniformBuffersSize, maxFramesBeingProcessed);
-	createSSBOs(logicalDevice, physicalDevice, totalStorageBuffersSize, maxFramesBeingProcessed);
+	createUniformBuffers(logicalDevice, physicalDevice, totalUniformBuffersSize, maxFramesInFlight);
+	createSSBOs(logicalDevice, physicalDevice, totalStorageBuffersSize, maxFramesInFlight);
 
 	BufferData uniformBufferData{};
 	BufferData storageBufferData{};
 
-	uniformBufferData.buffers = mUniformBuffers;
-	storageBufferData.buffers = mSSBOs;
+	uniformBufferData.buffers = mPipelineUniformBuffers;
+	storageBufferData.buffers = mPipelineDescriptorSSBOs;
 
 	for (int i = 0; i < numSets; i++)
 	{
 		pipelines[i]->createPipelineDescriptorSetData(logicalDevice, descriptorPool, &uniformBufferData, &storageBufferData, 
-			maxFramesBeingProcessed);
+			maxFramesInFlight);
 	}
 }
 
-bool UniformDescriptorManager::createUniformBuffers(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkDeviceSize bufferSize, 
-	int maxFramesBeingProcessed)
+void UniformDescriptorManager::createMaterialSpecificDescriptorSets(std::vector<Material*> materials, VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkDescriptorPool descriptorPool, int maxFramesInFlight)
 {
-	mUniformBuffers.resize(maxFramesBeingProcessed);
-	mUniformBuffersMemory.resize(maxFramesBeingProcessed);
-	mUniformBuffersMapped.resize(maxFramesBeingProcessed);
+}
 
-	for (int i = 0; i < maxFramesBeingProcessed; i++)
+bool UniformDescriptorManager::createUniformBuffers(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkDeviceSize bufferSize, 
+	int maxFramesInFlight)
+{
+	mPipelineUniformBuffers.resize(maxFramesInFlight);
+	mPipelineUniformBuffersMemory.resize(maxFramesInFlight);
+	mPipelineUniformBuffersMapped.resize(maxFramesInFlight);
+
+	for (int i = 0; i < maxFramesInFlight; i++)
 	{
 		createBuffer(logicalDevice, physicalDevice, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, mUniformBuffers[i],
-			mUniformBuffersMemory[i]);
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, mPipelineUniformBuffers[i],
+			mPipelineUniformBuffersMemory[i]);
 
-		if (vkMapMemory(logicalDevice, mUniformBuffersMemory[i], 0, bufferSize, 0, &mUniformBuffersMapped[i]) != VK_SUCCESS)
+		if (vkMapMemory(logicalDevice, mPipelineUniformBuffersMemory[i], 0, bufferSize, 0, &mPipelineUniformBuffersMapped[i]) != VK_SUCCESS)
 		{
 			std::cout << "\nFailed to map memory for uniform buffer..." << std::endl;
 			return false;
@@ -60,25 +60,25 @@ bool UniformDescriptorManager::createUniformBuffers(VkDevice logicalDevice, VkPh
 }
 
 bool UniformDescriptorManager::createSSBOs(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkDeviceSize bufferSize, 
-	int maxFramesBeingProcessed)
+	int maxFramesInFlight)
 {
-	mSSBOs.resize(maxFramesBeingProcessed);
-	mSSBOsMemory.resize(maxFramesBeingProcessed);
+	mPipelineDescriptorSSBOs.resize(maxFramesInFlight);
+	mPipelineDescriptorSSBOsMemory.resize(maxFramesInFlight);
 
-	for (int i = 0; i < maxFramesBeingProcessed; i++)
+	for (int i = 0; i < maxFramesInFlight; i++)
 	{
 		//TODO: Add a way to set the flags like: VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
 		if (!createBuffer(logicalDevice, physicalDevice, bufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
 			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, 
-			mSSBOs[i], mSSBOsMemory[i]))
+			mPipelineDescriptorSSBOs[i], mPipelineDescriptorSSBOsMemory[i]))
 			{ return false; }
 	}
 
 	return true;
 }
 
-void UniformDescriptorManager::updatePipelineSpecificUniformBuffers(Pipeline* graphicsPipeline, Pipeline* computePipeline, 
-	int currFrame, float aspectRatio, float dt)
+void UniformDescriptorManager::updatePipelineSpecificUniformBuffers(std::vector<Pipeline*> activePipelines, int currFrame, 
+	float aspectRatio, float dt)
 {
 	static std::chrono::steady_clock::time_point startTime = std::chrono::high_resolution_clock::now();
 	std::chrono::steady_clock::time_point currentTime = std::chrono::high_resolution_clock::now();
@@ -93,58 +93,56 @@ void UniformDescriptorManager::updatePipelineSpecificUniformBuffers(Pipeline* gr
 	//Flips y scaling factor since glm presumes inverted y coord
 	mvpUniformObject.proj[1][1] *= -1;
 
-	graphicsPipeline->getPipelineDescriptorSetDataRef()->getUniformBufferDescriptors()[0]->setDataPointer(&mvpUniformObject);
+	activePipelines[0]->getPipelineBufferDescriptorRef(0)->setDataPointer(&mvpUniformObject);
 
 	DeltaTimeUniformObject dtUniformObject{};
 	dtUniformObject.dt = dt;
 
-	computePipeline->getPipelineDescriptorSetDataRef()->getUniformBufferDescriptors()[0]->setDataPointer(&dtUniformObject);
+	activePipelines[1]->getPipelineBufferDescriptorRef(0)->setDataPointer(&dtUniformObject);
 
 	//mDescriptorSetData.getUniformDescriptors()[1]->getUniformObjectData().memPointer = &dtUniformObject;
 	//mDescriptorSetData.getUniformDescriptors()[1]->getUniformObssjectData().size = sizeof(dtUniformObject);
 
-	for (const std::pair<const uint32_t, const DescriptorSetData*>& keyValuePair : mPipelineSpecificDescriptorSets)
+	for (const Pipeline* pipeline : activePipelines)
 	{
-		keyValuePair.second->updateBufferUniforms(mUniformBuffersMapped[currFrame]);
+		pipeline->getPipelineDescriptorSetData()->updateBufferUniforms(mPipelineUniformBuffersMapped[currFrame]);
 	}
 }
 
 void UniformDescriptorManager::bindPipelineSpecificDescriptorSet(VkCommandBuffer commandBuffer, Pipeline* pipeline, 
 	int currFrame)
 {
-	const DescriptorSetData* pipelineDescriptorSetData = mPipelineSpecificDescriptorSets[pipeline->getPipelineID()];
-
 	VkPipelineBindPoint bindPoint = pipeline->getIsComputePipeline() ? 
 		VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
 
 	vkCmdBindDescriptorSets(commandBuffer, bindPoint, pipeline->getPipelineLayout(), 0, 1,
-		pipelineDescriptorSetData->getDescriptorSet(currFrame), 0, nullptr);
+		pipeline->getPipelineDescriptorSetData()->getDescriptorSet(currFrame), 0, nullptr);
 }
 
 void UniformDescriptorManager::bindSSBOs(VkCommandBuffer commandBuffer, int currFrame, int numParticles)
 {
 	VkDeviceSize offsets[] = { 0 };
-	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &mSSBOs[currFrame], offsets);
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &mPipelineDescriptorSSBOs[currFrame], offsets);
 
 	vkCmdDraw(commandBuffer, numParticles, 1, 0, 0);
 }
 
 bool UniformDescriptorManager::addDataToSSBOs(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, void* pData, 
-	UniformBufferDescriptor* pDescriptorData)
+	const UniformBufferDescriptor* pDescriptorData)
 {
 	if (pDescriptorData->getSourceFromPastFrame()) { 
 		std::cout << "\nCan't add data to previous frame data" << std::endl;
 		return false; 
 	}
 
-	size_t numBuffers = mSSBOsMemory.size();
+	size_t numBuffers = mPipelineDescriptorSSBOsMemory.size();
 
 	for (int i = 0; i < numBuffers; i++)
 	{
 		void* bufferDataPointer;
-		vkMapMemory(logicalDevice, mSSBOsMemory[i], pDescriptorData->getOffset(), pDescriptorData->getDataSize(), 0, &bufferDataPointer);
+		vkMapMemory(logicalDevice, mPipelineDescriptorSSBOsMemory[i], pDescriptorData->getOffset(), pDescriptorData->getDataSize(), 0, &bufferDataPointer);
 		memcpy(bufferDataPointer, pData, (size_t)pDescriptorData->getDataSize());
-		vkUnmapMemory(logicalDevice, mSSBOsMemory[i]);
+		vkUnmapMemory(logicalDevice, mPipelineDescriptorSSBOsMemory[i]);
 	}
 
 	return true;
@@ -152,21 +150,19 @@ bool UniformDescriptorManager::addDataToSSBOs(VkDevice logicalDevice, VkPhysical
 
 void UniformDescriptorManager::cleanup(VkDevice logicalDevice)
 {
-	int numBuffers = mUniformBuffers.size();
+	int numBuffers = mPipelineUniformBuffers.size();
 
 	for (int i = 0; i < numBuffers; i++)
 	{
-		vkDestroyBuffer(logicalDevice, mUniformBuffers[i], nullptr);
-		vkFreeMemory(logicalDevice, mUniformBuffersMemory[i], nullptr);
+		vkDestroyBuffer(logicalDevice, mPipelineUniformBuffers[i], nullptr);
+		vkFreeMemory(logicalDevice, mPipelineUniformBuffersMemory[i], nullptr);
 	}
 
-	numBuffers = mSSBOs.size();
+	numBuffers = mPipelineDescriptorSSBOs.size();
 
 	for (int i = 0; i < numBuffers; i++)
 	{
-		vkDestroyBuffer(logicalDevice, mSSBOs[i], nullptr);
-		vkFreeMemory(logicalDevice, mSSBOsMemory[i], nullptr);
+		vkDestroyBuffer(logicalDevice, mPipelineDescriptorSSBOs[i], nullptr);
+		vkFreeMemory(logicalDevice, mPipelineDescriptorSSBOsMemory[i], nullptr);
 	}
-
-	mPipelineSpecificDescriptorSets.clear();
 }

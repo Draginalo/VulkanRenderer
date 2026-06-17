@@ -3,10 +3,18 @@
 #include "vulkan/vulkan.h"
 #include <iostream>
 
+enum DescriptorLevel {
+	GLOBAL,
+	PIPELINE_SPECIFIC,
+	MATERIAL_SPECIFIC,
+	OBJECT_SPECIFIC
+};
+
 class UniformDescriptor {
 public:
-	UniformDescriptor(uint32_t dstBinding = 0, VkShaderStageFlagBits stageFlags = VK_SHADER_STAGE_VERTEX_BIT, 
-		VkDescriptorType uniformType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) : mDstBinding(dstBinding),
+	UniformDescriptor(DescriptorLevel descriptorLevel, uint32_t dstBinding = 0, 
+		VkShaderStageFlagBits stageFlags = VK_SHADER_STAGE_VERTEX_BIT, 
+		VkDescriptorType uniformType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) : mDescriptorLevel(descriptorLevel), mDstBinding(dstBinding),
 		mStageFlags(stageFlags), mUniformType(uniformType) {};
 
 	virtual inline VkDescriptorSetLayoutBinding getDescriptorSetLayoutBinding() = 0;
@@ -18,9 +26,16 @@ public:
 	virtual inline void setStageFlags(VkShaderStageFlagBits stageFlags) { mStageFlags = stageFlags; }
 	virtual inline VkShaderStageFlagBits getStageFlags() { return mStageFlags; }
 	virtual inline void setUniformType(VkDescriptorType uniformType) { mUniformType = uniformType; }
-	virtual inline VkDescriptorType getUniformType() { return mUniformType; }
+	virtual inline const VkDescriptorType getUniformType() const { return mUniformType; }
+	virtual inline const DescriptorLevel getDescriptorLevel() const { return mDescriptorLevel; }
+
+	bool operator==(const UniformDescriptor& other) 
+	{
+		return other.mDstBinding == mDstBinding && other.mStageFlags == mStageFlags && other.mUniformType == mUniformType;
+	}
 protected:
 	uint32_t mDstBinding;
 	VkShaderStageFlagBits mStageFlags;
 	VkDescriptorType mUniformType;
+	DescriptorLevel mDescriptorLevel;
 };

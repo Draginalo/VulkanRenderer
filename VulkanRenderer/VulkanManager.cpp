@@ -54,35 +54,35 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 
 	mDescriptorPool.createDescriptorPool(mLogicalDevice, descPoolCreateInfo);
 
-	std::vector<UniformBufferDescriptor*> descriptos;
+	std::vector<UniformBufferDescriptor> descriptos;
 
 	des1.setDstBinding(0);
 	VkDescriptorBufferInfo bufferInfo{};
 	bufferInfo.offset = 0;
 	bufferInfo.range = sizeof(ModelViewProjectionUniformObject);
 	des1.setBufferInfo(bufferInfo);
-	descriptos.push_back(&des1);
+	descriptos.push_back(des1);
 
-	std::vector<UniformImageDescriptor*> descriptos1;
+	std::vector<UniformImageDescriptor> descriptos1;
 	VkDescriptorImageInfo imageInfo{};
 	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	imageInfo.imageView = mTextureImageView;
 	imageInfo.sampler = mTextureSampler;
 
-	std::vector<UniformBufferDescriptor*> descriptos2;
+	std::vector<UniformBufferDescriptor> descriptos2;
 
-	des3 = UniformBufferDescriptor(0, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, sizeof(DeltaTimeUniformObject));
-	descriptos2.push_back(&des3);
+	des3 = UniformBufferDescriptor(PIPELINE_SPECIFIC, 0, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, sizeof(DeltaTimeUniformObject));
+	descriptos2.push_back(des3);
 
-	des4 = UniformBufferDescriptor(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 
+	des4 = UniformBufferDescriptor(PIPELINE_SPECIFIC, 1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 
 		sizeof(Particle2D) * PARTICLE_COUNT, nullptr, true);
-	descriptos2.push_back(&des4);
+	descriptos2.push_back(des4);
 
-	des5 = UniformBufferDescriptor(2, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+	des5 = UniformBufferDescriptor(PIPELINE_SPECIFIC, 2, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 		sizeof(Particle2D) * PARTICLE_COUNT);
-	descriptos2.push_back(&des5);
+	descriptos2.push_back(des5);
 
-	std::vector<UniformImageDescriptor*> descriptos3;
+	std::vector<UniformImageDescriptor> descriptos3;
 	imageInfo = {};
 	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	imageInfo.imageView = mTextureImageView;
@@ -90,7 +90,7 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 
 	des2.setImageInfo(imageInfo);
 	des2.setDstBinding(1);
-	descriptos1.push_back(&des2);
+	descriptos1.push_back(des2);
 
 	mGraphicsPipeline.loadPipelineDescriptorSetData(descriptos, descriptos1, MAX_FRAMES_IN_FLIGHT);
 	mComputePipeline.loadPipelineDescriptorSetData(descriptos2, descriptos3, MAX_FRAMES_IN_FLIGHT);
@@ -112,9 +112,8 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 		particles[i].velocity = glm::normalize(particles[i].position) * 0.00025f * (rngRange(rngEngine) + 0.3f);
 		particles[i].color = glm::vec3(rngRange(rngEngine), rngRange(rngEngine), rngRange(rngEngine));
 	}
-
 	mUniformDescriptorManager.addDataToSSBOs(mLogicalDevice, mPhysicalDevice, particles.data(), 
-		mComputePipeline.getPipelineDescriptorSetDataRef()->getUniformBufferDescriptors()[2]);
+		mComputePipeline.getPipelineBufferDescriptor(2));
 
 	mVertexBufferData.createVertexDataFromModel(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue, "../Assets/Models/Room/room.obj");
 
@@ -207,7 +206,7 @@ bool VulkanManager::drawFrame(GLFWwindow* window, float dt, bool* needToReloadGU
 	//CPU waits until fence has been signaled by GPU (compute done from previous frame)
 	vkWaitForFences(mLogicalDevice, 1, &mWhileComputingFences[mCurrentFrame], VK_TRUE, UINT64_MAX);
 
-	mUniformDescriptorManager.updatePipelineSpecificUniformBuffers(&mGraphicsPipeline, &mComputePipeline, mCurrentFrame, 
+	mUniformDescriptorManager.updatePipelineSpecificUniformBuffers({ &mGraphicsPipeline, &mComputePipeline }, mCurrentFrame,
 		mSwapChainImageExtent.width / (float)mSwapChainImageExtent.height, dt);
 
 	//Only run compute shader when actually rendering the particles

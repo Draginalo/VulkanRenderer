@@ -14,17 +14,21 @@ struct BufferData {
 
 class DescriptorSetData {
 public:
-	void loadDescriptors(std::vector<UniformBufferDescriptor*> uniformBufferDescriptors,
-		std::vector<UniformImageDescriptor*> uniformImageDescriptors, int maxFramesInFlight);
+	void loadDescriptors(std::vector<UniformBufferDescriptor> uniformBufferDescriptors,
+		std::vector<UniformImageDescriptor> uniformImageDescriptors, int maxFramesInFlight);
 
 	bool createDescriptorSetLayout(VkDevice logicalDevice);
 	bool createDescriptorSetData(VkDevice logicalDevice, VkDescriptorPool descriptorPool, BufferData* destUniformBuffers, 
-		BufferData* destStorageBuffers, int maxFramesBeingProcessed);
+		BufferData* destStorageBuffers, int maxFramesInFlight);
 
 	std::vector<VkDescriptorSetLayoutBinding> getLayoutBindings();
 	std::vector<VkWriteDescriptorSet> getWriteDescriptorSets(VkDescriptorSet destSet, BufferData* destUniformBuffers, 
 		BufferData* destStorageBuffers, size_t currFrame);
-	inline std::vector<UniformBufferDescriptor*> getUniformBufferDescriptors() { return mUniformBufferDescriptors; }
+	inline const std::vector<UniformBufferDescriptor>* getUniformBufferDescriptors() const { return &mUniformBufferDescriptors; }
+	inline const std::vector<UniformBufferDescriptor>* getUniformImageDescriptors() const { return &mUniformBufferDescriptors; }
+
+	//Dev remove this 
+	inline std::vector<UniformBufferDescriptor>* getUniformBufferDescriptorsRef() { return &mUniformBufferDescriptors; }
 
 	void updateBufferUniforms(void* destBuffer) const;
 
@@ -42,6 +46,6 @@ private:
 	VkDeviceSize mTotalUniformBufferSize = 0;
 	VkDeviceSize mTotalStorageBufferSize = 0;
 
-	std::vector<UniformBufferDescriptor*> mUniformBufferDescriptors;
-	std::vector<UniformImageDescriptor*> mUniformImageDescriptors;
+	std::vector<UniformBufferDescriptor> mUniformBufferDescriptors;
+	std::vector<UniformImageDescriptor> mUniformImageDescriptors;
 };

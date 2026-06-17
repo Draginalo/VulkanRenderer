@@ -6,9 +6,10 @@
 
 class UniformImageDescriptor : public UniformDescriptor {
 public:
-	UniformImageDescriptor(uint32_t dstBinding = 0, VkShaderStageFlagBits stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-		VkDescriptorType uniformType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VkDescriptorImageInfo imageInfo = {}) : UniformDescriptor(dstBinding, stageFlags, uniformType),
-		mImageInfo(imageInfo) {};
+	UniformImageDescriptor(DescriptorLevel descriptorLevel = GLOBAL, uint32_t dstBinding = 0, 
+		VkShaderStageFlagBits stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+		VkDescriptorType uniformType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VkDescriptorImageInfo imageInfo = {}) : 
+		UniformDescriptor(descriptorLevel, dstBinding, stageFlags, uniformType), mImageInfo(imageInfo) {};
 
 	inline void setImageInfo(VkDescriptorImageInfo imageInfo) { mImageInfo = imageInfo; }
 

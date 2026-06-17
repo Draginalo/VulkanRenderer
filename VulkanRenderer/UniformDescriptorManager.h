@@ -31,35 +31,44 @@ struct DeltaTimeUniformObject {
 class UniformDescriptorManager {
 public:
 	void createPipelineSpecificDescriptorSets(std::vector<Pipeline*> pipelines, VkDevice logicalDevice,
-		VkPhysicalDevice physicalDevice, VkDescriptorPool descriptorPool, int maxFramesBeingProcessed);
+		VkPhysicalDevice physicalDevice, VkDescriptorPool descriptorPool, int maxFramesInFlight);
 
-	void updatePipelineSpecificUniformBuffers(Pipeline* graphicsPipeline, Pipeline* computePipeline, int currFrame, 
-		float aspectRatio, float dt);
+	void createMaterialSpecificDescriptorSets(std::vector<Material*> materials, VkDevice logicalDevice,
+		VkPhysicalDevice physicalDevice, VkDescriptorPool descriptorPool, int maxFramesInFlight);
+
+	void updatePipelineSpecificUniformBuffers(std::vector<Pipeline*> activePipelines, int currFrame, float aspectRatio, float dt);
 	void bindPipelineSpecificDescriptorSet(VkCommandBuffer commandBuffer, Pipeline* pipeline, int currFrame);
 
 	void bindSSBOs(VkCommandBuffer commandBuffer, int currFrame, int numParticles);
 	bool addDataToSSBOs(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, void* pData, 
-		UniformBufferDescriptor* pDescriptorData);
+		const UniformBufferDescriptor* pDescriptorData);
 
 	void cleanup(VkDevice logicalDevice);
 
-	inline const DescriptorSetData* getPipelineSpecificDescriptorSet(Pipeline* pipeline)
-	{ return mPipelineSpecificDescriptorSets[pipeline->getPipelineID()]; };
+	//inline const DescriptorSetData* getPipelineSpecificDescriptorSet(Pipeline* pipeline)
+	//{ return mPipelineSpecificDescriptorSets[pipeline->getPipelineID()]; };
 private:
 	bool createUniformBuffers(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkDeviceSize bufferSize,
-		int maxFramesBeingProcessed);
 
-	bool createSSBOs(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkDeviceSize bufferSize, int maxFramesBeingProcessed);
+		int maxFramesInFlight);
 
-	std::vector<VkBuffer> mUniformBuffers;
-	std::vector<VkDeviceMemory> mUniformBuffersMemory;
-	std::vector<void*> mUniformBuffersMapped;
+	bool createSSBOs(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkDeviceSize bufferSize, int maxFramesInFlight);
 
 	std::vector<VkDescriptorSet> mGlobalDescriptorSets;
-	std::unordered_map<uint32_t, const DescriptorSetData*> mPipelineSpecificDescriptorSets;
-	//std::unordered_map<Material, std::vector<VkDescriptorSet>> mMaterialSpeecificDescriptorSets;
-	//std::unordered_map<GameObject, std::vector<VkDescriptorSet>> mMaterialSpeecificDescriptorSets;
 
-	std::vector<VkBuffer> mSSBOs;
-	std::vector<VkDeviceMemory> mSSBOsMemory;
+	//Pipeline Descriptor Set Buffers
+	std::vector<VkBuffer> mPipelineUniformBuffers;
+	std::vector<VkDeviceMemory> mPipelineUniformBuffersMemory;
+	std::vector<void*> mPipelineUniformBuffersMapped;
+
+	std::vector<VkBuffer> mPipelineDescriptorSSBOs;
+	std::vector<VkDeviceMemory> mPipelineDescriptorSSBOsMemory;
+
+	//Material Descriptor Set Buffers
+	std::vector<VkBuffer> mMaterialUniformBuffers;
+	std::vector<VkDeviceMemory> mMaterialUniformBuffersMemory;
+	std::vector<void*> mMaterialUniformBuffersMapped;
+
+	std::vector<VkBuffer> mMaterialDescriptorSSBOs;
+	std::vector<VkDeviceMemory> mMaterialDescriptorSSBOsMemory;
 };
