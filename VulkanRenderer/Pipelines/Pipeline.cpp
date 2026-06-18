@@ -46,12 +46,43 @@ void Pipeline::createPipelineMaterial(std::vector<UniformBufferDescriptor> unifo
 	std::vector<UniformImageDescriptor> uniformImageDescriptors, VkDevice logicalDevice, VkDescriptorPool descriptorPool,
 	BufferData* destUniformBuffers, BufferData* destStorageBuffers, int maxFramesInFlight)
 {
-	for (const UniformBufferDescriptor& baseBufferDescriptor : (*mBaseMaterialDescriptorSetData.getUniformBufferDescriptors()))
+	for (const UniformBufferDescriptor& baseBufferDescriptor : (*mBaseMaterial.materialDescriptorSetData.getUniformBufferDescriptors()))
 	{
 		if (std::find(uniformBufferDescriptors.begin(), uniformBufferDescriptors.end(), baseBufferDescriptor) == 
 			uniformBufferDescriptors.end())
 		{
-			throw std::runtime_error("New material does not follow base material descriptor types");
+			throw std::runtime_error("New material does not follow base material buffer descriptor types");
 		}
 	}
+
+	if (mBaseMaterial.materialDescriptorSetData.getUniformBufferDescriptors()->size() != uniformBufferDescriptors.size())
+	{
+		throw std::runtime_error("New material contains duplicate buffer descriptors");
+	}
+
+	for (const UniformImageDescriptor& baseImageDescriptor : (*mBaseMaterial.materialDescriptorSetData.getUniformImageDescriptors()))
+	{
+		if (std::find(uniformImageDescriptors.begin(), uniformImageDescriptors.end(), baseImageDescriptor) ==
+			uniformImageDescriptors.end())
+		{
+			throw std::runtime_error("New material does not follow base material image descriptor types");
+		}
+	}
+
+	if (mBaseMaterial.materialDescriptorSetData.getUniformImageDescriptors()->size() != uniformImageDescriptors.size())
+	{
+		throw std::runtime_error("New material contains duplicate buffer descriptors");
+	}
+
+	size_t newMatIndex = mPipelineMaterials.size();
+	Material newMat{};
+	newMat.pipelineForMaterial = this;
+
+	mPipelineMaterials.push_back(newMat);
+
+	mPipelineMaterials[newMatIndex].materialDescriptorSetData.loadDescriptors(uniformBufferDescriptors, uniformImageDescriptors, 
+		maxFramesInFlight);
+
+	mPipelineMaterials[newMatIndex].materialDescriptorSetData.createDescriptorSetData(logicalDevice, descriptorPool,
+		destUniformBuffers, destStorageBuffers, maxFramesInFlight);
 }

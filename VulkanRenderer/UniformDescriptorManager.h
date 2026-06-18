@@ -30,14 +30,17 @@ struct DeltaTimeUniformObject {
 
 class UniformDescriptorManager {
 public:
+	bool createDescriptorPool(VkDevice logicalDevice, std::vector<Pipeline*> pipelines, int maxFramesInFlight);
+
 	void createPipelineSpecificDescriptorSets(std::vector<Pipeline*> pipelines, VkDevice logicalDevice,
-		VkPhysicalDevice physicalDevice, VkDescriptorPool descriptorPool, int maxFramesInFlight);
+		VkPhysicalDevice physicalDevice, int maxFramesInFlight);
 
 	void createMaterialSpecificDescriptorSets(std::vector<Material*> materials, VkDevice logicalDevice,
-		VkPhysicalDevice physicalDevice, VkDescriptorPool descriptorPool, int maxFramesInFlight);
+		VkPhysicalDevice physicalDevice, int maxFramesInFlight);
 
 	void updatePipelineSpecificUniformBuffers(std::vector<Pipeline*> activePipelines, int currFrame, float aspectRatio, float dt);
 	void bindPipelineSpecificDescriptorSet(VkCommandBuffer commandBuffer, Pipeline* pipeline, int currFrame);
+	void bindMaterialSpecificDescriptorSet(VkCommandBuffer commandBuffer, const Material* material, int currFrame);
 
 	void bindSSBOs(VkCommandBuffer commandBuffer, int currFrame, int numParticles);
 	bool addDataToSSBOs(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, void* pData, 
@@ -53,6 +56,8 @@ private:
 		int maxFramesInFlight);
 
 	bool createSSBOs(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkDeviceSize bufferSize, int maxFramesInFlight);
+
+	VkDescriptorPool mDescriptorPool;
 
 	std::vector<VkDescriptorSet> mGlobalDescriptorSets;
 

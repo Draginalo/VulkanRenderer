@@ -10,12 +10,20 @@ bool GraphicsPipeline::createPipeline(VkDevice logicalDevice, VkExtent2D viewpor
 		throw std::runtime_error("The pipeline descriptor set data must be added and initialized prior to creating the pipeline...");
 	}
 
+	std::vector<VkDescriptorSetLayout> layouts = {};
+
+	VkDescriptorSetLayout* pipelineLayout = mPipelineDescriptorSetData.getDescriptorSetLayout();
+	VkDescriptorSetLayout* baseMatLayout = mBaseMaterial.materialDescriptorSetData.getDescriptorSetLayout();
+
+	if (pipelineLayout != nullptr) { layouts.push_back(*pipelineLayout); }
+	if (baseMatLayout != nullptr) { layouts.push_back(*baseMatLayout); }
+
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
 	pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutCreateInfo.setLayoutCount = 1;
+	pipelineLayoutCreateInfo.setLayoutCount = static_cast<uint32_t>(layouts.size());
 	pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
 	pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
-	pipelineLayoutCreateInfo.pSetLayouts = mPipelineDescriptorSetData.getDescriptorSetLayout();
+	pipelineLayoutCreateInfo.pSetLayouts = layouts.data();
 
 	if (vkCreatePipelineLayout(logicalDevice, &pipelineLayoutCreateInfo, nullptr, &mPipelineLayout) != VK_SUCCESS)
 	{

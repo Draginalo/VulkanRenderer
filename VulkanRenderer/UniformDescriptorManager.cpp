@@ -2,7 +2,7 @@
 #include "Helpers/BufferHelpers.h"
 
 void UniformDescriptorManager::createPipelineSpecificDescriptorSets(std::vector<Pipeline*> pipelines, VkDevice logicalDevice,
-	VkPhysicalDevice physicalDevice, VkDescriptorPool descriptorPool, int maxFramesInFlight)
+	VkPhysicalDevice physicalDevice, int maxFramesInFlight)
 {
 	int numSets = pipelines.size();
 	VkDeviceSize totalUniformBuffersSize = 0;
@@ -11,6 +11,7 @@ void UniformDescriptorManager::createPipelineSpecificDescriptorSets(std::vector<
 	for (int i = 0; i < numSets; i++)
 	{
 		pipelines[i]->createPipelineDescriptorSetLayout(logicalDevice);
+		pipelines[i]->createBaseMaterialDescriptorSetLayout(logicalDevice);
 
 		totalUniformBuffersSize += pipelines[i]->getPipelineDescriptorSetData()->getTotalUniformBufferSize();
 		totalStorageBuffersSize += pipelines[i]->getPipelineDescriptorSetData()->getTotalStorageBufferSize();
@@ -27,13 +28,99 @@ void UniformDescriptorManager::createPipelineSpecificDescriptorSets(std::vector<
 
 	for (int i = 0; i < numSets; i++)
 	{
-		pipelines[i]->createPipelineDescriptorSetData(logicalDevice, descriptorPool, &uniformBufferData, &storageBufferData, 
+		pipelines[i]->createPipelineDescriptorSetData(logicalDevice, mDescriptorPool, &uniformBufferData, &storageBufferData, 
+			maxFramesInFlight);
+		pipelines[i]->createBaseMaterialDescriptorSetData(logicalDevice, mDescriptorPool, &uniformBufferData, &storageBufferData,
 			maxFramesInFlight);
 	}
 }
 
-void UniformDescriptorManager::createMaterialSpecificDescriptorSets(std::vector<Material*> materials, VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkDescriptorPool descriptorPool, int maxFramesInFlight)
+void UniformDescriptorManager::createMaterialSpecificDescriptorSets(std::vector<Material*> materials, VkDevice logicalDevice, 
+	VkPhysicalDevice physicalDevice, int maxFramesInFlight)
 {
+}
+
+bool UniformDescriptorManager::createDescriptorPool(VkDevice logicalDevice, std::vector<Pipeline*> pipelines, int maxFramesInFlight)
+{
+	std::vector<VkDescriptorPoolSize> poolSizes{};
+
+	std::unordered_map<VkDescriptorType, uint32_t> bufferTypeCountTracker;
+
+	uint32_t maxSets = 0;
+
+	for (const Pipeline* pipeline : pipelines)
+	{
+		//Accounts for each descriptor set per per pipeline
+		maxSets++;
+
+		for (const UniformBufferDescriptor& buffDescriptor : *pipeline->getPipelineDescriptorSetData()->getUniformBufferDescriptors())
+		{
+			if (bufferTypeCountTracker.find(buffDescriptor.getUniformType()) == bufferTypeCountTracker.end())
+			{
+				bufferTypeCountTracker[buffDescriptor.getUniformType()] = 1;
+			}
+			else {
+				bufferTypeCountTracker[buffDescriptor.getUniformType()]++;
+			}
+		}
+
+		for (const UniformImageDescriptor& imageDescriptor : *pipeline->getPipelineDescriptorSetData()->getUniformImageDescriptors())
+		{
+			if (bufferTypeCountTracker.find(imageDescriptor.getUniformType()) == bufferTypeCountTracker.end())
+			{
+				bufferTypeCountTracker[imageDescriptor.getUniformType()] = 1;
+			}
+			else {
+				bufferTypeCountTracker[imageDescriptor.getUniformType()]++;
+			}
+		}
+
+		for (const UniformBufferDescriptor& buffDescriptor : 
+			*pipeline->getBaseMaterial()->materialDescriptorSetData.getUniformBufferDescriptors())
+		{
+			if (bufferTypeCountTracker.find(buffDescriptor.getUniformType()) == bufferTypeCountTracker.end())
+			{
+				bufferTypeCountTracker[buffDescriptor.getUniformType()] = 1;
+			}
+			else {
+				bufferTypeCountTracker[buffDescriptor.getUniformType()]++;
+			}
+		}
+
+		for (const UniformImageDescriptor& imageDescriptor : 
+			*pipeline->getBaseMaterial()->materialDescriptorSetData.getUniformImageDescriptors())
+		{
+			if (bufferTypeCountTracker.find(imageDescriptor.getUniformType()) == bufferTypeCountTracker.end())
+			{
+				bufferTypeCountTracker[imageDescriptor.getUniformType()] = 1;
+			}
+			else {
+				bufferTypeCountTracker[imageDescriptor.getUniformType()]++;
+			}
+		}
+
+		//Accounts for all materials of a pipeline (including the base material set with the + 1)
+		maxSets += pipeline->getPipelineMaterials()->size() + 1;
+	}
+
+	for (const std::pair<VkDescriptorType, uint32_t>& descriptorCount : bufferTypeCountTracker)
+	{
+		poolSizes.push_back({ descriptorCount.first, descriptorCount.second * maxFramesInFlight });
+	}
+
+	VkDescriptorPoolCreateInfo poolInfo{};
+	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+	poolInfo.pPoolSizes = poolSizes.data();
+	poolInfo.maxSets = maxSets * maxFramesInFlight; 
+
+	if (vkCreateDescriptorPool(logicalDevice, &poolInfo, nullptr, &mDescriptorPool) != VK_SUCCESS)
+	{
+		std::cout << "\nFailed to create descriptor pool..." << std::endl;
+		return false;
+	}
+
+	return true;
 }
 
 bool UniformDescriptorManager::createUniformBuffers(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkDeviceSize bufferSize, 
@@ -119,6 +206,15 @@ void UniformDescriptorManager::bindPipelineSpecificDescriptorSet(VkCommandBuffer
 		pipeline->getPipelineDescriptorSetData()->getDescriptorSet(currFrame), 0, nullptr);
 }
 
+void UniformDescriptorManager::bindMaterialSpecificDescriptorSet(VkCommandBuffer commandBuffer, const Material* material, int currFrame)
+{
+	VkPipelineBindPoint bindPoint = material->pipelineForMaterial->getIsComputePipeline() ?
+		VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+	vkCmdBindDescriptorSets(commandBuffer, bindPoint, material->pipelineForMaterial->getPipelineLayout(), 1, 1,
+		material->materialDescriptorSetData.getDescriptorSet(currFrame), 0, nullptr);
+}
+
 void UniformDescriptorManager::bindSSBOs(VkCommandBuffer commandBuffer, int currFrame, int numParticles)
 {
 	VkDeviceSize offsets[] = { 0 };
@@ -165,4 +261,6 @@ void UniformDescriptorManager::cleanup(VkDevice logicalDevice)
 		vkDestroyBuffer(logicalDevice, mPipelineDescriptorSSBOs[i], nullptr);
 		vkFreeMemory(logicalDevice, mPipelineDescriptorSSBOsMemory[i], nullptr);
 	}
+
+	vkDestroyDescriptorPool(logicalDevice, mDescriptorPool, nullptr);
 }

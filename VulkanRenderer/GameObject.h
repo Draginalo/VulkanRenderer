@@ -21,7 +21,7 @@ public:
 	
 
 private:
-	GraphicsPipeline* mpGraphicsPipeline;
+	Material* mpMaterial;
 	Mesh3D* meshToRender;
 
 	Transform mTranform;

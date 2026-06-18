@@ -7,9 +7,12 @@
 #include <fstream>
 #include <vector>
 
+class Pipeline;
+
 //Material struct for creating material based on a pipeline (for passing unique images, colors, etc)
 struct Material {
 	DescriptorSetData materialDescriptorSetData;
+	Pipeline* pipelineForMaterial;
 };
 
 class Pipeline {
@@ -29,19 +32,19 @@ public:
 
 	inline void loadBaseMaterialDescriptorSetData(std::vector<UniformBufferDescriptor> uniformBufferDescriptors,
 		std::vector<UniformImageDescriptor> uniformImageDescriptors, int maxFramesInFlight)
-	{
-		mPipelineDescriptorSetData.loadDescriptors(uniformBufferDescriptors, uniformImageDescriptors, maxFramesInFlight);
-	}
+	{ mBaseMaterial.materialDescriptorSetData.loadDescriptors(uniformBufferDescriptors, uniformImageDescriptors, maxFramesInFlight); }
 
 	inline void createPipelineDescriptorSetLayout(VkDevice logicalDevice) 
-	{ 
-		mPipelineDescriptorSetData.createDescriptorSetLayout(logicalDevice); 
-	}
+	{ mPipelineDescriptorSetData.createDescriptorSetLayout(logicalDevice); }
+
+	inline void createBaseMaterialDescriptorSetLayout(VkDevice logicalDevice)
+	{ mBaseMaterial.materialDescriptorSetData.createDescriptorSetLayout(logicalDevice); }
 
 	inline bool createBaseMaterialDescriptorSetData(VkDevice logicalDevice, VkDescriptorPool descriptorPool,
 		BufferData* destUniformBuffers, BufferData* destStorageBuffers, int maxFramesInFlight) 
 	{
-		return mBaseMaterialDescriptorSetData.createDescriptorSetData(logicalDevice, descriptorPool, destUniformBuffers, 
+		mBaseMaterial.pipelineForMaterial = this;
+		return mBaseMaterial.materialDescriptorSetData.createDescriptorSetData(logicalDevice, descriptorPool, destUniformBuffers,
 			destStorageBuffers, maxFramesInFlight);
 	}
 
@@ -61,10 +64,21 @@ public:
 		vkDestroyPipeline(logicalDevice, mPipeline, nullptr);
 		vkDestroyPipelineLayout(logicalDevice, mPipelineLayout, nullptr);
 		mPipelineDescriptorSetData.cleanup(logicalDevice);
+
+		mBaseMaterial.materialDescriptorSetData.cleanup(logicalDevice);
+
+		for (const Material& material : mPipelineMaterials)
+		{
+			material.materialDescriptorSetData.cleanup(logicalDevice);
+		}
+
+		mPipelineMaterials.clear();
 	}
 
 	inline VkPipeline getPipeline() { return mPipeline; }
 	inline VkPipelineLayout getPipelineLayout() { return mPipelineLayout; }
+	inline const std::vector<Material>* getPipelineMaterials() const { return &mPipelineMaterials; }
+	inline const Material* getBaseMaterial() const { return &mBaseMaterial; }
 
 	//Returns as const so that the descriptor set data cannot be modified (only modified by loadPipelineDescriptorSetData())
 	inline const DescriptorSetData* getPipelineDescriptorSetData() const { return &mPipelineDescriptorSetData; }
@@ -86,7 +100,7 @@ protected:
 	VkPipeline mPipeline = {};
 
 	DescriptorSetData mPipelineDescriptorSetData;
-	DescriptorSetData mBaseMaterialDescriptorSetData;
+	Material mBaseMaterial;
 
 	std::vector<Material> mPipelineMaterials;
 

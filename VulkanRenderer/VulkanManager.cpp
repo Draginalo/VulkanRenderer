@@ -45,15 +45,6 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 
 	createTextureSampler(mLogicalDevice, mPhysicalDevice, &mTextureSampler);
 
-	DescriptorPoolCreateData descPoolCreateInfo{};
-	descPoolCreateInfo.maxDescriptorSets = 2;
-	descPoolCreateInfo.maxFramesInFlight = MAX_FRAMES_IN_FLIGHT;
-	descPoolCreateInfo.uniformBufferCount = 2;
-	descPoolCreateInfo.storageBufferCount = 2;
-	descPoolCreateInfo.combinedImageSamplerCount = 1;
-
-	mDescriptorPool.createDescriptorPool(mLogicalDevice, descPoolCreateInfo);
-
 	std::vector<UniformBufferDescriptor> descriptos;
 
 	des1.setDstBinding(0);
@@ -92,10 +83,16 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	des2.setDstBinding(1);
 	descriptos1.push_back(des2);
 
-	mGraphicsPipeline.loadPipelineDescriptorSetData(descriptos, descriptos1, MAX_FRAMES_IN_FLIGHT);
+	mGraphicsPipeline.loadPipelineDescriptorSetData(descriptos, {}, MAX_FRAMES_IN_FLIGHT);
+	mGraphicsPipeline.loadBaseMaterialDescriptorSetData({}, descriptos1, MAX_FRAMES_IN_FLIGHT);
+
 	mComputePipeline.loadPipelineDescriptorSetData(descriptos2, descriptos3, MAX_FRAMES_IN_FLIGHT);
-	mUniformDescriptorManager.createPipelineSpecificDescriptorSets({&mGraphicsPipeline, &mComputePipeline}, 
-		mLogicalDevice, mPhysicalDevice, mDescriptorPool.getDescriptorPool(), MAX_FRAMES_IN_FLIGHT);
+
+	std::vector<Pipeline*> pipelinesInUse = { &mGraphicsPipeline, &mComputePipeline };
+	mUniformDescriptorManager.createDescriptorPool(mLogicalDevice, pipelinesInUse, MAX_FRAMES_IN_FLIGHT);
+	mUniformDescriptorManager.createPipelineSpecificDescriptorSets(pipelinesInUse, 
+		mLogicalDevice, mPhysicalDevice, MAX_FRAMES_IN_FLIGHT);
+	//mGraphicsPipeline.createPipelineMaterial()
 
 	std::vector<Particle2D> particles(PARTICLE_COUNT);
 
@@ -179,7 +176,6 @@ bool VulkanManager::cleanupVulkan()
 	vkFreeMemory(mLogicalDevice, mMSAA_ColorhMemory, nullptr);
 
 	mUniformDescriptorManager.cleanup(mLogicalDevice);
-	mDescriptorPool.cleanup(mLogicalDevice);
 	mVertexBufferData.cleanupBuffers(mLogicalDevice);
 	mGraphicsPipeline.cleanupPipeline(mLogicalDevice);
 	mComputePipeline.cleanupPipeline(mLogicalDevice);
@@ -1044,6 +1040,10 @@ bool VulkanManager::renderScene(VkCommandBuffer commandBuffer, uint32_t imageInd
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
 	mUniformDescriptorManager.bindPipelineSpecificDescriptorSet(commandBuffer, &mGraphicsPipeline, mCurrentFrame);
+	const Material* material = mGraphicsPipeline.getPipelineMaterials()->empty() ? mGraphicsPipeline.getBaseMaterial() :
+		&(*mGraphicsPipeline.getPipelineMaterials())[0];
+	mUniformDescriptorManager.bindMaterialSpecificDescriptorSet(commandBuffer, material,
+		mCurrentFrame);
 	
 	if (mRenderingParticles)
 	{
@@ -1158,6 +1158,11 @@ bool VulkanManager::renderScene_DynamicRendering(VkCommandBuffer commandBuffer, 
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
 	mUniformDescriptorManager.bindPipelineSpecificDescriptorSet(commandBuffer, &mGraphicsPipeline, mCurrentFrame);
+
+	const Material* material = mGraphicsPipeline.getPipelineMaterials()->empty() ? mGraphicsPipeline.getBaseMaterial() : 
+		&(*mGraphicsPipeline.getPipelineMaterials())[0];
+	mUniformDescriptorManager.bindMaterialSpecificDescriptorSet(commandBuffer, material, 
+		mCurrentFrame);
 	
 	if (mRenderingParticles)
 	{

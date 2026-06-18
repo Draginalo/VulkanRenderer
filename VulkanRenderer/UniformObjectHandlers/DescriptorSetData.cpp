@@ -35,7 +35,7 @@ bool DescriptorSetData::createDescriptorSetLayout(VkDevice logicalDevice)
 	layoutInfo.pBindings = layoutBindings.data();
 
 	if (vkCreateDescriptorSetLayout(logicalDevice, &layoutInfo, nullptr, &mDescriptorSetLayout) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create descriptor set layout!");
+		throw std::runtime_error("Failed to create descriptor set layout!");
 	}
 
 	return true;

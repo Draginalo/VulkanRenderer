@@ -25,7 +25,7 @@ public:
 	std::vector<VkWriteDescriptorSet> getWriteDescriptorSets(VkDescriptorSet destSet, BufferData* destUniformBuffers, 
 		BufferData* destStorageBuffers, size_t currFrame);
 	inline const std::vector<UniformBufferDescriptor>* getUniformBufferDescriptors() const { return &mUniformBufferDescriptors; }
-	inline const std::vector<UniformBufferDescriptor>* getUniformImageDescriptors() const { return &mUniformBufferDescriptors; }
+	inline const std::vector<UniformImageDescriptor>* getUniformImageDescriptors() const { return &mUniformImageDescriptors; }
 
 	//Dev remove this 
 	inline std::vector<UniformBufferDescriptor>* getUniformBufferDescriptorsRef() { return &mUniformBufferDescriptors; }
@@ -36,7 +36,7 @@ public:
 	inline const VkDeviceSize getTotalStorageBufferSize() const { return mTotalStorageBufferSize; }
 
 	inline const VkDescriptorSet* getDescriptorSet(int currFrame) const { return &mDescriptorSets[currFrame]; }
-	inline const VkDescriptorSetLayout* getDescriptorSetLayout() const { return &mDescriptorSetLayout; }
+	inline VkDescriptorSetLayout* getDescriptorSetLayout() { return &mDescriptorSetLayout; }
 
 	inline void cleanup(VkDevice logicalDevice) const { vkDestroyDescriptorSetLayout(logicalDevice, mDescriptorSetLayout, nullptr); }
 private:

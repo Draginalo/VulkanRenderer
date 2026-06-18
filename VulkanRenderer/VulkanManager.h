@@ -24,7 +24,6 @@
 #include "Pipelines/ComputePipeline.h"
 #include "Mesh/Mesh3D.h"
 #include "UniformDescriptorManager.h"
-#include "UniformObjectHandlers/DescriptorPool.h"
 #include "Helpers/TextureImageHelpers.h"
 #include "UniformObjectHandlers/UniformObjects/UniformBufferDescriptor.h"
 #include "UniformObjectHandlers/UniformObjects/UniformImageDescriptor.h"
@@ -180,7 +179,6 @@ private:
 	ComputePipeline mComputePipeline;
 	Mesh3D mVertexBufferData;
 	UniformDescriptorManager mUniformDescriptorManager;
-	DescriptorPool mDescriptorPool;
 
 	VkCommandPool mCommandPool;
 	std::vector<VkCommandBuffer> mGraphicsCommandBuffers;
