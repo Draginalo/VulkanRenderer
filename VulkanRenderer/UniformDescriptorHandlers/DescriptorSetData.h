@@ -1,8 +1,8 @@
 #pragma once
 
 #include "vulkan/vulkan.h"
-#include "UniformObjects/UniformBufferDescriptor.h"
-#include "UniformObjects/UniformImageDescriptor.h"
+#include "UniformDescriptors/UniformBufferDescriptor.h"
+#include "UniformDescriptors/UniformImageDescriptor.h"
 #include <vector>
 #include <iostream>
 #include <unordered_map>

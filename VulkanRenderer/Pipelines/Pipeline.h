@@ -1,7 +1,7 @@
 #pragma once
 
 #include "vulkan/vulkan.h"
-#include "../UniformObjectHandlers/DescriptorSetData.h"
+#include "../UniformDescriptorHandlers/DescriptorSetData.h"
 
 #include <iostream>
 #include <fstream>

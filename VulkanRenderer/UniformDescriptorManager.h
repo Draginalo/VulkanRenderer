@@ -13,7 +13,7 @@
 #include <chrono>
 
 #include "Helpers/VertexInputData.h"
-#include "UniformObjectHandlers/DescriptorSetData.h"
+#include "UniformDescriptorHandlers/DescriptorSetData.h"
 #include "Pipelines/Pipeline.h"
 
 //Uniform buffer struct for mvp matrecies with explicit alignment specefied to match shader uniform alignment

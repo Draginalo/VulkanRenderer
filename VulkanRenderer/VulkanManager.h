@@ -25,8 +25,9 @@
 #include "Mesh/Mesh3D.h"
 #include "UniformDescriptorManager.h"
 #include "Helpers/TextureImageHelpers.h"
-#include "UniformObjectHandlers/UniformObjects/UniformBufferDescriptor.h"
-#include "UniformObjectHandlers/UniformObjects/UniformImageDescriptor.h"
+#include "UniformDescriptorHandlers/UniformDescriptors/UniformBufferDescriptor.h"
+#include "UniformDescriptorHandlers/UniformDescriptors/UniformImageDescriptor.h"
+#include "GameObject.h"
 
 #ifdef NDEBUG
 	const bool enableValidationLayers = false;
@@ -156,6 +157,10 @@ private:
 
 	void handlePipelineChanges(GLFWwindow* window, bool* needToReloadGUI_Flag);
 
+	void addGameObjectToRenderTree(const GameObject* gameObjectToAdd);
+	void removeGameObjectFromRenderTree(const GameObject* gameObjectToAdd);
+	void buildRenderTree(std::vector<GameObject*> activeGameObjects);
+
 	VkSampleCountFlagBits getMaxUsableSampleCount();
 
 	VkInstance mInstance;
@@ -177,6 +182,7 @@ private:
 
 	GraphicsPipeline mGraphicsPipeline;
 	ComputePipeline mComputePipeline;
+	std::unordered_map<const Pipeline*, std::unordered_map<const Material*, std::vector<const MeshGeneric*>>> mActiveRenderTree;
 	Mesh3D mVertexBufferData;
 	UniformDescriptorManager mUniformDescriptorManager;
 

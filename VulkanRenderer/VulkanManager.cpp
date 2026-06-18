@@ -1,7 +1,7 @@
 ﻿#include "VulkanManager.h"
 #include "Helpers/BufferHelpers.h"
-#include "UniformObjectHandlers//UniformObjects/UniformBufferDescriptor.h"
-#include "UniformObjectHandlers/UniformObjects/UniformImageDescriptor.h"
+#include "UniformDescriptorHandlers//UniformDescriptors/UniformBufferDescriptor.h"
+#include "UniformDescriptorHandlers/UniformDescriptors/UniformImageDescriptor.h"
 
 #include <random>
 
@@ -134,6 +134,9 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 
 	mSelectedScene = mScenes[0];
 
+	mActiveRenderTree[&mGraphicsPipeline] = {};
+	mActiveRenderTree[&mComputePipeline] = {};
+
 	return false;
 }
 
@@ -199,7 +202,7 @@ bool VulkanManager::drawFrame(GLFWwindow* window, float dt, bool* needToReloadGU
 {
 	VkSubmitInfo submitInfo{};
 
-	//CPU waits until fence has been signaled by GPU (compute done from previous frame)
+	//CPU waits until fence has been signaled by GPU (compute done from last iteration of this frame in flight's index)
 	vkWaitForFences(mLogicalDevice, 1, &mWhileComputingFences[mCurrentFrame], VK_TRUE, UINT64_MAX);
 
 	mUniformDescriptorManager.updatePipelineSpecificUniformBuffers({ &mGraphicsPipeline, &mComputePipeline }, mCurrentFrame,
@@ -226,7 +229,7 @@ bool VulkanManager::drawFrame(GLFWwindow* window, float dt, bool* needToReloadGU
 		}
 	}
 
-	//CPU waits until fence has been signaled by GPU (rendering done from previous frame)
+	//CPU waits until fence has been signaled by GPU (rendering done from last iteration of this frame in flight's index)
 	vkWaitForFences(mLogicalDevice, 1, &mWhileRenderingFences[mCurrentFrame], VK_TRUE, UINT64_MAX);
 
 	uint32_t imageIndex;
@@ -1263,6 +1266,52 @@ void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReload
 		{
 			*needToReloadGUI_Flag = true;
 		}
+	}
+}
+
+void VulkanManager::addGameObjectToRenderTree(const GameObject* gameObjectToAdd)
+{
+	if (mActiveRenderTree.find(gameObjectToAdd->getMaterial()->pipelineForMaterial) == mActiveRenderTree.end())
+	{
+		mActiveRenderTree[gameObjectToAdd->getMaterial()->pipelineForMaterial] = {};
+	}
+
+	if (mActiveRenderTree[gameObjectToAdd->getMaterial()->pipelineForMaterial].find(gameObjectToAdd->getMaterial()) !=
+		mActiveRenderTree[gameObjectToAdd->getMaterial()->pipelineForMaterial].end())
+	{
+		mActiveRenderTree[gameObjectToAdd->getMaterial()->pipelineForMaterial][gameObjectToAdd->getMaterial()] = {};
+	}
+
+	mActiveRenderTree[gameObjectToAdd->getMaterial()->pipelineForMaterial][gameObjectToAdd->getMaterial()].push_back(
+		gameObjectToAdd->getMesh());
+}
+
+void VulkanManager::removeGameObjectFromRenderTree(const GameObject* gameObjectToAdd)
+{
+	if (mActiveRenderTree.find(gameObjectToAdd->getMaterial()->pipelineForMaterial) == mActiveRenderTree.end())
+	{
+		return;
+	}
+
+	if (mActiveRenderTree[gameObjectToAdd->getMaterial()->pipelineForMaterial].find(gameObjectToAdd->getMaterial()) !=
+		mActiveRenderTree[gameObjectToAdd->getMaterial()->pipelineForMaterial].end())
+	{
+		return;
+	}
+
+	std::vector<const MeshGeneric*> meshList = mActiveRenderTree[gameObjectToAdd->getMaterial()->pipelineForMaterial][gameObjectToAdd->getMaterial()];
+	std::vector<const MeshGeneric*>::iterator element = std::find(meshList.begin(), meshList.end(), gameObjectToAdd->getMesh());
+	
+	if (element == meshList.end()) { return; }
+	
+	meshList.erase(element);
+}
+
+void VulkanManager::buildRenderTree(std::vector<GameObject*> activeGameObjects)
+{
+	for (const GameObject* activeGameObject : activeGameObjects)
+	{
+		addGameObjectToRenderTree(activeGameObject);
 	}
 }
 
