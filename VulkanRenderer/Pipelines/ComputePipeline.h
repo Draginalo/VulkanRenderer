@@ -2,6 +2,7 @@
 
 #include "vulkan/vulkan.h"
 #include "Pipeline.h"
+#include "../Mesh/Drawable.h"
 
 #include <iostream>
 #include <fstream>
@@ -13,5 +14,7 @@ public:
 
 	bool creatPipeline(VkDevice logicalDevice);
 	void bindPipeline(VkCommandBuffer commandBuffer) override;
+	bool recordPipelineCommands(VkCommandBuffer commandBuffer, const Drawable* drawable, VkImage& swapChainImage, 
+		VkImageView& swapChainImageView, uint32_t currFrame, void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*), void (*fpCmdEndRenderingKHR)(VkCommandBuffer)) override;
 private:
 };

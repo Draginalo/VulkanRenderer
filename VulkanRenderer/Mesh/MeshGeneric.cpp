@@ -86,7 +86,7 @@ void MeshGeneric::cleanupBuffers(VkDevice logicalDevice)
 	vkFreeMemory(logicalDevice, mIndeciesBufferMemory, nullptr);
 }
 
-void MeshGeneric::draw(VkCommandBuffer commandBuffer)
+void MeshGeneric::draw(VkCommandBuffer commandBuffer, uint32_t currFrame) const
 {
 	VkDeviceSize offsets[] = { 0 };
 

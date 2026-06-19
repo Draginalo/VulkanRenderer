@@ -14,13 +14,19 @@ struct ConfigurablePipelineValues {
 	VkPrimitiveTopology primitiveTopology;
 	VkBool32 depthWriteEnabled;
 	VkSampleCountFlagBits samples;
+
+	VkImageView* targetDepthImageView;
+	VkImage* targetDepthImage;
+	VkImageView* targetMSAA_ImageView;
+	VkImage* targetMSAA_Image;
 };
 
 class GraphicsPipeline : public Pipeline {
 public:
 	bool createPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat, 
 		VkFormat depthAttachmentFormat, ConfigurablePipelineValues configValues,
-		const char* vertShaderFilepath, const char* fragShaderFilepath, VertexInputData vertexInputData);
+		const char* vertShaderFilepath, const char* fragShaderFilepath, VertexInputData vertexInputData, 
+		std::vector<VkImageView> swapChainImageViews, bool usingDynamicRendering);
 	bool createRenderPass(VkDevice logicalDevice, VkFormat colorAttachmentFormat, VkFormat depthAttachmentFormat,
 		VkSampleCountFlagBits samples);
 
@@ -40,10 +46,21 @@ public:
 	inline void setDynamicRenderingEnabled(bool enabled) { mDynamicRenderingEnabled = enabled; }
 
 	void bindPipeline(VkCommandBuffer commandBuffer) override;
-
+	bool recordPipelineCommands(VkCommandBuffer commandBuffer, const Drawable* drawable, VkImage& swapChainImage, 
+		VkImageView& swapChainImageView, uint32_t currFrame, void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*), void (*fpCmdEndRenderingKHR)(VkCommandBuffer)) override;
 private:
 	VkRenderPass mRenderPass = VK_NULL_HANDLE;
 	std::vector<VkFramebuffer> mFramebuffers;
+
+	VkImageView* mDepthImageView;
+	VkImage* mDepthImage;
+
+	VkImageView* mMSAA_ImageView;
+	VkImage* mMSAA_Image;
+
+	VkExtent2D mRenderExtent;
+
+	VkSampleCountFlagBits mMSAA_PipelineSamples = VK_SAMPLE_COUNT_1_BIT;
 
 	bool mDynamicRenderingEnabled = true;
 };

@@ -48,6 +48,8 @@ public:
 
 	void cleanup(VkDevice logicalDevice);
 
+	std::vector<VkBuffer>* getPipelineDescriptorSSBO() { return &mPipelineDescriptorSSBOs; }
+
 	//inline const DescriptorSetData* getPipelineSpecificDescriptorSet(Pipeline* pipeline)
 	//{ return mPipelineSpecificDescriptorSets[pipeline->getPipelineID()]; };
 private:

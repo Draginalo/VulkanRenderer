@@ -23,11 +23,13 @@
 #include "Pipelines/GraphicsPipeline.h"
 #include "Pipelines/ComputePipeline.h"
 #include "Mesh/Mesh3D.h"
+#include "Mesh/BufferDrawer.h"
 #include "UniformDescriptorManager.h"
 #include "Helpers/TextureImageHelpers.h"
 #include "UniformDescriptorHandlers/UniformDescriptors/UniformBufferDescriptor.h"
 #include "UniformDescriptorHandlers/UniformDescriptors/UniformImageDescriptor.h"
 #include "GameObject.h"
+#include "RenderGraph.h"
 
 #ifdef NDEBUG
 	const bool enableValidationLayers = false;
@@ -74,6 +76,7 @@ enum Scene
 struct SceneData {
 
 	Scene sceneType;
+	std::vector<DrawableData> sceneGameObjects;
 	std::string name;
 	bool selected;
 };
@@ -104,7 +107,6 @@ public:
 	inline const VkFormat getDepthFormat() { return mDepthFormat; }
 	inline const VkSampleCountFlagBits getMSAA_Samples() { return mMSAA_Samples; }
 	inline const VkQueue getGraphicsQueue() { return mGraphicsQueue; }
-	inline GraphicsPipeline* getGraphicsPipeline() { return &mGraphicsPipeline; }
 private:
 	bool createInstance();
 
@@ -149,17 +151,12 @@ private:
 	bool createCommandPool();
 	bool createCommandBuffers();
 	bool renderScene(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-	bool renderScene_DynamicRendering(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
 	bool recordComputeCommandBuffer(VkCommandBuffer commandBuffer);
 
 	bool createSyncObjects();
 
 	void handlePipelineChanges(GLFWwindow* window, bool* needToReloadGUI_Flag);
-
-	void addGameObjectToRenderTree(const GameObject* gameObjectToAdd);
-	void removeGameObjectFromRenderTree(const GameObject* gameObjectToAdd);
-	void buildRenderTree(std::vector<GameObject*> activeGameObjects);
 
 	VkSampleCountFlagBits getMaxUsableSampleCount();
 
@@ -180,10 +177,23 @@ private:
 	VkExtent2D mSwapChainImageExtent;
 	VkFormat mDepthFormat;
 
-	GraphicsPipeline mGraphicsPipeline;
-	ComputePipeline mComputePipeline;
-	std::unordered_map<const Pipeline*, std::unordered_map<const Material*, std::vector<const MeshGeneric*>>> mActiveRenderTree;
-	Mesh3D mVertexBufferData;
+	std::vector<GraphicsPipeline> mGraphicsPipelineStorageList;
+	std::vector<ComputePipeline> mComputePipelineStorageList;
+
+	//Main depth attachment data
+	VkImage mDepthImage;
+	VkDeviceMemory mDepthMemory;
+	VkImageView mDepthImageView;
+
+	//Main color attachment for MSAA
+	VkImage mMSAA_ColorImage;
+	VkDeviceMemory mMSAA_ColorhMemory;
+	VkImageView mMSAA_ColorImageView;
+
+	RenderGraph mActiveRenderGraph;
+
+	Mesh3D mHouseMesh;
+	BufferDrawer mParticleDrawer;
 	UniformDescriptorManager mUniformDescriptorManager;
 
 	VkCommandPool mCommandPool;
@@ -195,23 +205,22 @@ private:
 	std::vector<VkSemaphore> mRenderFinishedSemaphores;
 	std::vector<VkFence> mWhileRenderingFences;
 
-	//Compute semaphores and fences
-	std::vector<VkSemaphore> mComputeFinishedSemaphores;
-	std::vector<VkFence> mWhileComputingFences;
 
 	const int MAX_FRAMES_IN_FLIGHT = 2;
 	const int PARTICLE_COUNT = 256000;
 
 	uint32_t mCurrentFrame = 0;
+	uint32_t mCurrScene = 0;
 
-	bool mRenderingParticles = false;
+	bool mRenderingParticles = true;
 	bool mFramebuffersResized = false;
 	bool mRemakePipelineTriggered = false;
 	bool mSwitchingRenderMethod = false;
-	bool mUsingDynamicRenderingForGUI = false; //For ImGui display, to not imediately switch with the one for logic while still rendering
+	bool mUsingDynamicRenderingForGUI = true; //For ImGui display, to not imediately switch with the one for logic while still rendering
+	bool mUsingDynamicRendering = true;
 
 	//Scene data for managing which scenes to render
-	std::vector<SceneData> mScenes = { { MODEL, "Render Model", true}, { PARTICLES, "Render Particles", false}};
+	std::vector<SceneData> mScenes = {};
 	SceneData mSelectedScene;
 
 	//Function pointers for additional feature functions
@@ -224,22 +233,6 @@ private:
 	VkDeviceMemory mTextureMemory;
 	VkImageView mTextureImageView;
 	VkSampler mTextureSampler;
-
-	UniformBufferDescriptor des1;
-	UniformImageDescriptor des2;
-	UniformBufferDescriptor des3;
-	UniformBufferDescriptor des4;
-	UniformBufferDescriptor des5;
-
-	//Main depth attachment data
-	VkImage mDepthImage;
-	VkDeviceMemory mDepthMemory;
-	VkImageView mDepthImageView;
-
-	//Main color attachment for MSAA
-	VkImage mMSAA_ColorImage;
-	VkDeviceMemory mMSAA_ColorhMemory;
-	VkImageView mMSAA_ColorImageView;
 
 	VkSampleCountFlagBits mMSAA_Samples = VK_SAMPLE_COUNT_1_BIT;
 

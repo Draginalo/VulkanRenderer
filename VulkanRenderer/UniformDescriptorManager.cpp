@@ -180,12 +180,16 @@ void UniformDescriptorManager::updatePipelineSpecificUniformBuffers(std::vector<
 	//Flips y scaling factor since glm presumes inverted y coord
 	mvpUniformObject.proj[1][1] *= -1;
 
-	activePipelines[0]->getPipelineBufferDescriptorRef(0)->setDataPointer(&mvpUniformObject);
+	if (activePipelines.size() > 1)
+	{
+		DeltaTimeUniformObject dtUniformObject{};
+		dtUniformObject.dt = dt;
 
-	DeltaTimeUniformObject dtUniformObject{};
-	dtUniformObject.dt = dt;
-
-	activePipelines[1]->getPipelineBufferDescriptorRef(0)->setDataPointer(&dtUniformObject);
+		activePipelines[0]->getPipelineBufferDescriptorRef(0)->setDataPointer(&dtUniformObject);
+	}
+	else {
+		activePipelines[0]->getPipelineBufferDescriptorRef(0)->setDataPointer(&mvpUniformObject);
+	}
 
 	//mDescriptorSetData.getUniformDescriptors()[1]->getUniformObjectData().memPointer = &dtUniformObject;
 	//mDescriptorSetData.getUniformDescriptors()[1]->getUniformObssjectData().size = sizeof(dtUniformObject);

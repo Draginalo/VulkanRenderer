@@ -1,14 +1,18 @@
 #include "GraphicsPipeline.h"
 #include "../UniformDescriptorManager.h"
+#include "../Helpers/TextureImageHelpers.h"
 
 bool GraphicsPipeline::createPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat,
 	VkFormat depthAttachmentFormat, ConfigurablePipelineValues configValues,
-	const char* vertShaderFilepath, const char* fragShaderFilepath, VertexInputData vertexInputData)
+	const char* vertShaderFilepath, const char* fragShaderFilepath, VertexInputData vertexInputData, 
+	std::vector<VkImageView> swapChainImageViews, bool usingDynamicRendering)
 {
 	if (*mPipelineDescriptorSetData.getDescriptorSetLayout() == VK_NULL_HANDLE)
 	{
 		throw std::runtime_error("The pipeline descriptor set data must be added and initialized prior to creating the pipeline...");
 	}
+
+	mDynamicRenderingEnabled = usingDynamicRendering;
 
 	std::vector<VkDescriptorSetLayout> layouts = {};
 
@@ -194,6 +198,21 @@ bool GraphicsPipeline::createPipeline(VkDevice logicalDevice, VkExtent2D viewpor
 	vkDestroyShaderModule(logicalDevice, vertShaderModule, nullptr);
 	vkDestroyShaderModule(logicalDevice, fragShaderModule, nullptr);
 
+	mRenderExtent = viewportExtent;
+	mDepthImage = configValues.targetDepthImage;
+	mDepthImageView = configValues.targetDepthImageView;
+	mMSAA_Image = configValues.targetMSAA_Image;
+	mMSAA_ImageView = configValues.targetMSAA_ImageView;
+
+	mMSAA_PipelineSamples = configValues.samples;
+
+	if (mDynamicRenderingEnabled)
+	{
+		createRenderPass(logicalDevice, colorAttachmentFormat, depthAttachmentFormat, mMSAA_PipelineSamples);
+		createFramebuffers(logicalDevice, swapChainImageViews, *mDepthImageView, *mMSAA_ImageView,
+			mRenderExtent);
+	}
+
 	return true;
 }
 
@@ -350,4 +369,117 @@ VkRenderPassBeginInfo GraphicsPipeline::getRenderPassBeginInfo(uint32_t framebuf
 void GraphicsPipeline::bindPipeline(VkCommandBuffer commandBuffer)
 {
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipeline);
+}
+
+bool GraphicsPipeline::recordPipelineCommands(VkCommandBuffer commandBuffer, const Drawable* drawable, VkImage& swapChainImage,
+	VkImageView& swapChainImageView, uint32_t currFrame, void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*), void (*fpCmdEndRenderingKHR)(VkCommandBuffer))
+{
+	/*VkCommandBufferBeginInfo beginCommandBuffInfo{};
+	beginCommandBuffInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginCommandBuffInfo.flags = 0;
+	beginCommandBuffInfo.pInheritanceInfo = nullptr;
+
+	if (vkBeginCommandBuffer(commandBuffer, &beginCommandBuffInfo) != VK_SUCCESS)
+	{
+		std::cout << "\nFailed to begin recording command buffer..." << std::endl;
+		return false;
+	}*/
+
+	//Transitions swap chain correct formats, accesses, and stages for rendering (as resolve attachment for msaa)
+	transitionImageLayout(commandBuffer, swapChainImage, VK_IMAGE_LAYOUT_UNDEFINED,
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_2_NONE, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_2_NONE,
+		VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1, nullptr);
+
+	//Transitions multisampling color attachment formats, accesses, and stages for multisample rendering
+	transitionImageLayout(commandBuffer, *mMSAA_Image, VK_IMAGE_LAYOUT_UNDEFINED,
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_2_NONE, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT |
+		VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT, VK_PIPELINE_STAGE_2_NONE, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+		VK_IMAGE_ASPECT_COLOR_BIT, 1, nullptr);
+
+	//Transitions depth attachment formats, accesses, and stages for multisample rendering
+	transitionImageLayout(commandBuffer, *mDepthImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+		VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+		VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+		VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+		VK_IMAGE_ASPECT_DEPTH_BIT, 1, nullptr);
+
+	VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
+	VkClearValue clearDepth = { 1.0f, 0 };
+	VkRenderingAttachmentInfoKHR colorAttachmentInfo{};
+	colorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+	colorAttachmentInfo.clearValue = clearColor;
+	colorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	colorAttachmentInfo.imageView = swapChainImageView;
+
+	//Adds resolve image information if using MSAA
+	if (mMSAA_PipelineSamples != VK_SAMPLE_COUNT_1_BIT)
+	{
+		colorAttachmentInfo.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
+		colorAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		colorAttachmentInfo.resolveImageView = swapChainImageView;
+		colorAttachmentInfo.imageView = *mMSAA_ImageView;
+	}
+
+	VkRenderingAttachmentInfoKHR depthAttachmentInfo{};
+	depthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+	depthAttachmentInfo.clearValue = clearDepth;
+	depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	depthAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+	depthAttachmentInfo.imageView = *mDepthImageView;
+
+	//std::array<VkRenderingAttachmentInfoKHR, 1> colorAttachments = { colorAttachmentInfo };
+
+	VkRenderingInfoKHR renderingInfo{};
+	renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
+	renderingInfo.colorAttachmentCount = 1;
+	renderingInfo.pColorAttachments = &colorAttachmentInfo;
+	renderingInfo.renderArea.offset = { 0, 0 };
+	renderingInfo.renderArea.extent = mRenderExtent;
+	renderingInfo.layerCount = 1;
+	renderingInfo.pDepthAttachment = &depthAttachmentInfo;
+
+	fpCmdBeginRenderingKHR(commandBuffer, &renderingInfo);
+
+	bindPipeline(commandBuffer);
+
+	VkViewport viewport{};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = static_cast<float>(mRenderExtent.width);
+	viewport.height = static_cast<float>(mRenderExtent.height);
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+	VkRect2D scissor{};
+	scissor.offset = { 0, 0 };
+	scissor.extent = mRenderExtent;
+
+	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+	VkPipelineBindPoint bindPoint = getIsComputePipeline() ?
+		VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+	vkCmdBindDescriptorSets(commandBuffer, bindPoint, getPipelineLayout(), 0, 1,
+		getPipelineDescriptorSetData()->getDescriptorSet(currFrame), 0, nullptr);
+
+	const Material* material = getPipelineMaterials()->empty() ? getBaseMaterial() :
+		&(*getPipelineMaterials())[0];
+
+	bindPoint = material->pipelineForMaterial->getIsComputePipeline() ?
+		VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+	vkCmdBindDescriptorSets(commandBuffer, bindPoint, material->pipelineForMaterial->getPipelineLayout(), 1, 1,
+		material->materialDescriptorSetData.getDescriptorSet(currFrame), 0, nullptr);
+
+	drawable->draw(commandBuffer, currFrame);
+
+	fpCmdEndRenderingKHR(commandBuffer);
+
+	return true;
 }

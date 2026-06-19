@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include "../Mesh/Drawable.h"
 
 class Pipeline;
 
@@ -13,6 +14,12 @@ class Pipeline;
 struct Material {
 	DescriptorSetData materialDescriptorSetData;
 	Pipeline* pipelineForMaterial;
+};
+
+struct PipelineDependencyInfo {
+	//TODO: Expand this to depend on multiple pipelines with other types of memory barriers that are not tied to a specific pipeline
+	Pipeline* mDependsOnPipeline = nullptr;
+	VkBufferMemoryBarrier mBufferMemoryDependency;
 };
 
 class Pipeline {
@@ -59,6 +66,9 @@ public:
 		std::vector<UniformImageDescriptor> uniformImageDescriptors, VkDevice logicalDevice, VkDescriptorPool descriptorPool,
 		BufferData* destUniformBuffers, BufferData* destStorageBuffers, int maxFramesInFlight);
 
+	virtual bool recordPipelineCommands(VkCommandBuffer commandBuffer, const Drawable* drawable, VkImage& swapChainImage, 
+		VkImageView& swapChainImageView, uint32_t currFrame, void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*), void (*fpCmdEndRenderingKHR)(VkCommandBuffer)) = 0;
+
 	virtual inline void cleanupPipeline(VkDevice logicalDevice)
 	{
 		vkDestroyPipeline(logicalDevice, mPipeline, nullptr);
@@ -94,6 +104,9 @@ public:
 	inline uint32_t getPipelineID() { return mPipelineID; }
 	inline bool getIsComputePipeline() { return mIsComputePipeline; }
 
+	inline void setDependencyInfo(PipelineDependencyInfo dependencyInfo) { mDependencyInfo = dependencyInfo; } 
+	inline const PipelineDependencyInfo* getPipelineDependencyInfo() const { return &mDependencyInfo; }
+
 	virtual inline void bindPipeline(VkCommandBuffer commandBuffer) = 0;
 protected:
 	VkPipelineLayout mPipelineLayout = {};
@@ -105,6 +118,8 @@ protected:
 	std::vector<Material> mPipelineMaterials;
 
 	bool mIsComputePipeline = false;
+
+	PipelineDependencyInfo mDependencyInfo;
 
 	uint32_t mPipelineID;
 	static uint32_t mNumPipelineInstances;

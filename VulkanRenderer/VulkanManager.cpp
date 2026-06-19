@@ -23,13 +23,6 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	createDepthResources();
 	createMSAA_ColorResources();
 
-	if (!mGraphicsPipeline.dynamicRenderingEnabled())
-	{
-		mGraphicsPipeline.createRenderPass(mLogicalDevice, mSwapChainImageFormat, mDepthFormat, mMSAA_Samples);
-		mGraphicsPipeline.createFramebuffers(mLogicalDevice, mSwapChainImageViews, mDepthImageView, mMSAA_ColorImageView, 
-			mSwapChainImageExtent);
-	}
-
 	createCommandPool();
 
 	uint32_t texMipLevels;
@@ -47,6 +40,7 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 
 	std::vector<UniformBufferDescriptor> descriptos;
 
+	UniformBufferDescriptor des1{};
 	des1.setDstBinding(0);
 	VkDescriptorBufferInfo bufferInfo{};
 	bufferInfo.offset = 0;
@@ -62,35 +56,59 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 
 	std::vector<UniformBufferDescriptor> descriptos2;
 
+	UniformBufferDescriptor des3{};
 	des3 = UniformBufferDescriptor(PIPELINE_SPECIFIC, 0, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, sizeof(DeltaTimeUniformObject));
 	descriptos2.push_back(des3);
 
+	UniformBufferDescriptor des4{};
 	des4 = UniformBufferDescriptor(PIPELINE_SPECIFIC, 1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 
 		sizeof(Particle2D) * PARTICLE_COUNT, nullptr, true);
 	descriptos2.push_back(des4);
 
+	UniformBufferDescriptor des5{};
 	des5 = UniformBufferDescriptor(PIPELINE_SPECIFIC, 2, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 		sizeof(Particle2D) * PARTICLE_COUNT);
 	descriptos2.push_back(des5);
 
-	std::vector<UniformImageDescriptor> descriptos3;
 	imageInfo = {};
 	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	imageInfo.imageView = mTextureImageView;
 	imageInfo.sampler = mTextureSampler;
 
+	UniformImageDescriptor des2{};
 	des2.setImageInfo(imageInfo);
 	des2.setDstBinding(1);
 	descriptos1.push_back(des2);
 
-	mGraphicsPipeline.loadPipelineDescriptorSetData(descriptos, {}, MAX_FRAMES_IN_FLIGHT);
-	mGraphicsPipeline.loadBaseMaterialDescriptorSetData({}, descriptos1, MAX_FRAMES_IN_FLIGHT);
+	mGraphicsPipelineStorageList.push_back({});
+	GraphicsPipeline* scene1GraphicsPipeline = &mGraphicsPipelineStorageList[mGraphicsPipelineStorageList.size() - 1];
 
-	mComputePipeline.loadPipelineDescriptorSetData(descriptos2, descriptos3, MAX_FRAMES_IN_FLIGHT);
+	scene1GraphicsPipeline->loadPipelineDescriptorSetData(descriptos, {}, MAX_FRAMES_IN_FLIGHT);
+	scene1GraphicsPipeline->loadBaseMaterialDescriptorSetData({}, descriptos1, MAX_FRAMES_IN_FLIGHT);
 
-	std::vector<Pipeline*> pipelinesInUse = { &mGraphicsPipeline, &mComputePipeline };
-	mUniformDescriptorManager.createDescriptorPool(mLogicalDevice, pipelinesInUse, MAX_FRAMES_IN_FLIGHT);
-	mUniformDescriptorManager.createPipelineSpecificDescriptorSets(pipelinesInUse, 
+	mGraphicsPipelineStorageList.push_back({});
+	GraphicsPipeline* scene1GraphicsPipeline2 = &mGraphicsPipelineStorageList[mGraphicsPipelineStorageList.size() - 1];
+
+	scene1GraphicsPipeline2->loadPipelineDescriptorSetData({}, {}, MAX_FRAMES_IN_FLIGHT);
+	scene1GraphicsPipeline2->loadBaseMaterialDescriptorSetData({}, {}, MAX_FRAMES_IN_FLIGHT);
+
+	mComputePipelineStorageList.push_back({});
+	ComputePipeline* scene2ComputePipeline = &mComputePipelineStorageList[mComputePipelineStorageList.size() - 1];
+	scene2ComputePipeline->loadPipelineDescriptorSetData(descriptos2, {}, MAX_FRAMES_IN_FLIGHT);
+
+	std::vector<Pipeline*> allPipelines;
+	for (int i = 0; i < mGraphicsPipelineStorageList.size(); i++)
+	{
+		allPipelines.push_back(&mGraphicsPipelineStorageList[i]);
+	}
+
+	for (int i = 0; i < mComputePipelineStorageList.size(); i++)
+	{
+		allPipelines.push_back(&mComputePipelineStorageList[i]);
+	}
+
+	mUniformDescriptorManager.createDescriptorPool(mLogicalDevice, allPipelines, MAX_FRAMES_IN_FLIGHT);
+	mUniformDescriptorManager.createPipelineSpecificDescriptorSets(allPipelines, 
 		mLogicalDevice, mPhysicalDevice, MAX_FRAMES_IN_FLIGHT);
 	//mGraphicsPipeline.createPipelineMaterial()
 
@@ -109,35 +127,80 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 		particles[i].velocity = glm::normalize(particles[i].position) * 0.00025f * (rngRange(rngEngine) + 0.3f);
 		particles[i].color = glm::vec3(rngRange(rngEngine), rngRange(rngEngine), rngRange(rngEngine));
 	}
-	mUniformDescriptorManager.addDataToSSBOs(mLogicalDevice, mPhysicalDevice, particles.data(), 
-		mComputePipeline.getPipelineBufferDescriptor(2));
 
-	mVertexBufferData.createVertexDataFromModel(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue, "../Assets/Models/Room/room.obj");
+	mUniformDescriptorManager.addDataToSSBOs(mLogicalDevice, mPhysicalDevice, particles.data(), 
+		mComputePipelineStorageList[0].getPipelineBufferDescriptor(2));
+
+	mHouseMesh.createVertexDataFromModel(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue, "../Assets/Models/Room/room.obj");
 
 	ConfigurablePipelineValues configValues{};
 	configValues.samples = mMSAA_Samples;
-	configValues.primitiveTopology = mRenderingParticles ? VK_PRIMITIVE_TOPOLOGY_POINT_LIST : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	configValues.depthWriteEnabled = !mRenderingParticles;
+	configValues.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	configValues.depthWriteEnabled = true;
+	configValues.targetDepthImage = &mDepthImage;
+	configValues.targetDepthImageView = &mDepthImageView;
+	configValues.targetMSAA_Image = &mMSAA_ColorImage;
+	configValues.targetMSAA_ImageView = &mMSAA_ColorImageView;
 
-	const char* vertShader = mRenderingParticles ? "../Assets/Shaders/ByteEncoded/RenderParticles_VS.spv" : "../Assets/Shaders/ByteEncoded/BasicTriangle_VS.spv";
-	const char* fragShader = mRenderingParticles ? "../Assets/Shaders/ByteEncoded/RenderParticles_FS.spv" : "../Assets/Shaders/ByteEncoded/BasicTriangle_FS.spv";
+	char* vertShader = "../Assets/Shaders/ByteEncoded/BasicTriangle_VS.spv";
+	char* fragShader = "../Assets/Shaders/ByteEncoded/BasicTriangle_FS.spv";
 
-	VertexInputData vertexInputInfo = mRenderingParticles ? Particle2D::getParticleInputData() : mVertexBufferData.getVertexInputData();
+	VertexInputData vertexInputInfo = mHouseMesh.getVertexInputData();
 
-	mGraphicsPipeline.createPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat, configValues, 
-		vertShader, fragShader, vertexInputInfo);
-	mComputePipeline.creatPipeline(mLogicalDevice);
+	mGraphicsPipelineStorageList[0].createPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat, configValues,
+		vertShader, fragShader, vertexInputInfo, mSwapChainImageViews, mUsingDynamicRendering);
+
+	configValues = {};
+	configValues.samples = mMSAA_Samples;
+	configValues.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+	configValues.depthWriteEnabled = false;
+	configValues.targetDepthImage = &mDepthImage;
+	configValues.targetDepthImageView = &mDepthImageView;
+	configValues.targetMSAA_Image = &mMSAA_ColorImage;
+	configValues.targetMSAA_ImageView = &mMSAA_ColorImageView;
+
+	vertShader = "../Assets/Shaders/ByteEncoded/RenderParticles_VS.spv";
+	fragShader = "../Assets/Shaders/ByteEncoded/RenderParticles_FS.spv";
+
+	vertexInputInfo = Particle2D::getParticleInputData();
+
+	mGraphicsPipelineStorageList[1].createPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat, configValues,
+		vertShader, fragShader, vertexInputInfo, mSwapChainImageViews, mUsingDynamicRendering);
+
+	mComputePipelineStorageList[0].creatPipeline(mLogicalDevice);
 
 	createCommandBuffers();
 	createSyncObjects();
 	registerExtensionFunctions(mInstance);
 
-	mSelectedScene = mScenes[0];
+	BufferDrawerData particleDrawData{};
+	particleDrawData.framesInFlightBuffers = mUniformDescriptorManager.getPipelineDescriptorSSBO();
+	particleDrawData.numVertices = PARTICLE_COUNT;
+	particleDrawData.offset = 0;
+	mParticleDrawer.setBufferDrawData(particleDrawData);
 
-	mActiveRenderTree[&mGraphicsPipeline] = {};
-	mActiveRenderTree[&mComputePipeline] = {};
+	PipelineDependencyInfo depInfo{};
+	depInfo.mDependsOnPipeline = &mComputePipelineStorageList[0];
+	mGraphicsPipelineStorageList[0].setDependencyInfo(depInfo);
 
-	return false;
+	std::vector<DrawableData> scene1DrawablesData = 
+	{
+		{ &mHouseMesh, &mGraphicsPipelineStorageList[0], mGraphicsPipelineStorageList[0].getBaseMaterial()},
+	};
+
+	std::vector<DrawableData> scene2DrawablesData =
+	{
+		{ nullptr, &mComputePipelineStorageList[0], nullptr},
+		{ &mParticleDrawer, &mGraphicsPipelineStorageList[1], mGraphicsPipelineStorageList[1].getBaseMaterial()},
+	};
+
+	mScenes.push_back({ MODEL, scene1DrawablesData, "Render Model", true });
+	mScenes.push_back({ PARTICLES, scene2DrawablesData, "Render Particles", false });
+
+	mSelectedScene = mScenes[mCurrScene];
+	mActiveRenderGraph.buildRenderTree(mScenes[mCurrScene].sceneGameObjects);
+
+	return true;
 }
 
 bool VulkanManager::cleanupVulkan()
@@ -152,8 +215,8 @@ bool VulkanManager::cleanupVulkan()
 		vkDestroySemaphore(mLogicalDevice, mImageAvailableSemaphores[i], nullptr);
 		vkDestroyFence(mLogicalDevice, mWhileRenderingFences[i], nullptr);
 
-		vkDestroySemaphore(mLogicalDevice, mComputeFinishedSemaphores[i], nullptr);
-		vkDestroyFence(mLogicalDevice, mWhileComputingFences[i], nullptr);
+		//vkDestroySemaphore(mLogicalDevice, mComputeFinishedSemaphores[i], nullptr);
+		//vkDestroyFence(mLogicalDevice, mWhileComputingFences[i], nullptr);
 	}
 
 	for (size_t i = 0; i < numSwapChainImages; i++)
@@ -179,9 +242,17 @@ bool VulkanManager::cleanupVulkan()
 	vkFreeMemory(mLogicalDevice, mMSAA_ColorhMemory, nullptr);
 
 	mUniformDescriptorManager.cleanup(mLogicalDevice);
-	mVertexBufferData.cleanupBuffers(mLogicalDevice);
-	mGraphicsPipeline.cleanupPipeline(mLogicalDevice);
-	mComputePipeline.cleanupPipeline(mLogicalDevice);
+	mHouseMesh.cleanupBuffers(mLogicalDevice);
+
+	for (Pipeline& pipeline : mGraphicsPipelineStorageList)
+	{
+		pipeline.cleanupPipeline(mLogicalDevice);
+	}
+
+	for (Pipeline& pipeline : mComputePipelineStorageList)
+	{
+		pipeline.cleanupPipeline(mLogicalDevice);
+	}
 
 	vkDestroyDevice(mLogicalDevice, nullptr);
 
@@ -202,38 +273,12 @@ bool VulkanManager::drawFrame(GLFWwindow* window, float dt, bool* needToReloadGU
 {
 	VkSubmitInfo submitInfo{};
 
-	//CPU waits until fence has been signaled by GPU (compute done from last iteration of this frame in flight's index)
-	vkWaitForFences(mLogicalDevice, 1, &mWhileComputingFences[mCurrentFrame], VK_TRUE, UINT64_MAX);
-
-	mUniformDescriptorManager.updatePipelineSpecificUniformBuffers({ &mGraphicsPipeline, &mComputePipeline }, mCurrentFrame,
-		mSwapChainImageExtent.width / (float)mSwapChainImageExtent.height, dt);
-
-	//Only run compute shader when actually rendering the particles
-	if (mRenderingParticles)
-	{
-		vkResetFences(mLogicalDevice, 1, &mWhileComputingFences[mCurrentFrame]);
-		vkResetCommandBuffer(mComputeCommandBuffers[mCurrentFrame], 0);
-
-		recordComputeCommandBuffer(mComputeCommandBuffers[mCurrentFrame]);
-
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &mComputeCommandBuffers[mCurrentFrame];
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &mComputeFinishedSemaphores[mCurrentFrame];
-
-		if (vkQueueSubmit(mComputeQueue, 1, &submitInfo, mWhileComputingFences[mCurrentFrame]) != VK_SUCCESS)
-		{
-			std::cout << "Failed to submit command buffer to compute queue..." << std::endl;
-			return false;
-		}
-	}
-
 	//CPU waits until fence has been signaled by GPU (rendering done from last iteration of this frame in flight's index)
 	vkWaitForFences(mLogicalDevice, 1, &mWhileRenderingFences[mCurrentFrame], VK_TRUE, UINT64_MAX);
 
 	uint32_t imageIndex;
-	VkResult result = vkAcquireNextImageKHR(mLogicalDevice, mSwapChain, UINT64_MAX, mImageAvailableSemaphores[mCurrentFrame], VK_NULL_HANDLE, &imageIndex);
+	VkResult result = vkAcquireNextImageKHR(mLogicalDevice, mSwapChain, UINT64_MAX, mImageAvailableSemaphores[mCurrentFrame], 
+		VK_NULL_HANDLE, &imageIndex);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)
 	{
@@ -251,23 +296,90 @@ bool VulkanManager::drawFrame(GLFWwindow* window, float dt, bool* needToReloadGU
 	vkResetFences(mLogicalDevice, 1, &mWhileRenderingFences[mCurrentFrame]);
 	vkResetCommandBuffer(mGraphicsCommandBuffers[mCurrentFrame], 0);
 
-	if (mGraphicsPipeline.dynamicRenderingEnabled()) 
+	if (mUsingDynamicRendering)
 	{
-		renderScene_DynamicRendering(mGraphicsCommandBuffers[mCurrentFrame], imageIndex);
+		VkCommandBufferBeginInfo beginCommandBuffInfo{};
+		beginCommandBuffInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+		if (vkBeginCommandBuffer(mGraphicsCommandBuffers[mCurrentFrame], &beginCommandBuffInfo) != VK_SUCCESS)
+		{
+			std::cout << "\nFailed to begin recording compute command buffer..." << std::endl;
+			return false;
+		}
+
+		mUniformDescriptorManager.updatePipelineSpecificUniformBuffers({ *mActiveRenderGraph.getOrderedActivePipelines() }, mCurrentFrame,
+			mSwapChainImageExtent.width / (float)mSwapChainImageExtent.height, dt);
+
+		for (Pipeline* pipelineToRender : *mActiveRenderGraph.getOrderedActivePipelines())
+		{
+			/*mUniformDescriptorManager.bindPipelineSpecificDescriptorSet(mGraphicsCommandBuffers[mCurrentFrame], &mGraphicsPipeline,
+				mCurrentFrame);*/
+
+			for (const std::pair<const Material*, std::vector<const Drawable*>>& materialsToRender :
+				mActiveRenderGraph.getRenderTree()[pipelineToRender])
+			{
+				const PipelineDependencyInfo* depInfo = pipelineToRender->getPipelineDependencyInfo();
+				if (depInfo->mDependsOnPipeline != nullptr)
+				{
+					
+					VkBufferMemoryBarrier2 buffBarrier{};
+					buffBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+					buffBarrier.buffer = (*mUniformDescriptorManager.getPipelineDescriptorSSBO())[mCurrentFrame];
+					buffBarrier.size = sizeof(Particle2D) * PARTICLE_COUNT;
+					buffBarrier.offset = 0;
+
+					VkDependencyInfo dependencyInfo{};
+					dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+					dependencyInfo.dependencyFlags = 0;
+					dependencyInfo.bufferMemoryBarrierCount = 1;
+					dependencyInfo.pBufferMemoryBarriers = &buffBarrier;
+
+					fpCmdPipelineBarrier2(mGraphicsCommandBuffers[mCurrentFrame], &dependencyInfo);
+				}
+
+				if (!pipelineToRender->getIsComputePipeline())
+				{
+					/*const Material* material = pipelineToRender->getPipelineMaterials()->empty() ? pipelineToRender->getBaseMaterial() :
+					&(*pipelineToRender->getPipelineMaterials())[0]*/;
+					/*mUniformDescriptorManager.bindMaterialSpecificDescriptorSet(mGraphicsCommandBuffers[mCurrentFrame],
+						materialsToRender.first, mCurrentFrame);*/
+				}
+
+				for (const Drawable* currDrawable : materialsToRender.second)
+				{
+					pipelineToRender->recordPipelineCommands(mGraphicsCommandBuffers[mCurrentFrame], currDrawable,
+						mSwapChainImages[imageIndex], mSwapChainImageViews[imageIndex], mCurrentFrame, fpCmdBeginRenderingKHR,
+						fpCmdEndRenderingKHR);
+				}
+			}
+		}
+
+		renderGUI_DynamicRender(mGraphicsCommandBuffers[mCurrentFrame], imageIndex);
+
+		//Transitions swap chain image to the correct formats, accesses, and stages for presenting
+		transitionImageLayout(mGraphicsCommandBuffers[mCurrentFrame], mSwapChainImages[imageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_2_NONE,
+			VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
+			VK_IMAGE_ASPECT_COLOR_BIT, 1, fpCmdPipelineBarrier2);
+
+		if (vkEndCommandBuffer(mGraphicsCommandBuffers[mCurrentFrame]) != VK_SUCCESS)
+		{
+			std::cout << "\nFailed to end command buffer recording..." << std::endl;
+			return false;
+		}
 	}
 	else 
 	{
+		mUniformDescriptorManager.updatePipelineSpecificUniformBuffers(*mActiveRenderGraph.getOrderedActivePipelines(), mCurrentFrame,
+			mSwapChainImageExtent.width / (float)mSwapChainImageExtent.height, dt);
+
 		renderScene(mGraphicsCommandBuffers[mCurrentFrame], imageIndex);
 	}
 
 	//Only adds the compute shader wait semephore if actually rendering the particles which depend on the compute shader
 	std::vector<VkSemaphore> waitSemaphores = { mImageAvailableSemaphores[mCurrentFrame]};
-	if (mRenderingParticles)
-	{
-		waitSemaphores.push_back(mComputeFinishedSemaphores[mCurrentFrame]);
-	}
 
-	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size());
@@ -887,9 +999,13 @@ bool VulkanManager::recreateSwapChain(GLFWwindow* window)
 	createMSAA_ColorResources();
 	createDepthResources();
 
-	if (!mGraphicsPipeline.dynamicRenderingEnabled())
+	if (!mUsingDynamicRendering)
 	{
-		mGraphicsPipeline.createFramebuffers(mLogicalDevice, mSwapChainImageViews, mDepthImageView, mMSAA_ColorImageView, mSwapChainImageExtent);
+		for (GraphicsPipeline& graphicsPipeline : mGraphicsPipelineStorageList)
+		{
+			graphicsPipeline.createFramebuffers(mLogicalDevice, mSwapChainImageViews, mDepthImageView, mMSAA_ColorImageView,
+				mSwapChainImageExtent);
+		}
 	}
 
 	return false;
@@ -897,7 +1013,10 @@ bool VulkanManager::recreateSwapChain(GLFWwindow* window)
 
 void VulkanManager::cleanupSwapChain()
 {
-	mGraphicsPipeline.cleanupFrambuffers(mLogicalDevice);
+	for (GraphicsPipeline& graphicsPipeline : mGraphicsPipelineStorageList)
+	{
+		graphicsPipeline.cleanupFrambuffers(mLogicalDevice);
+	}
 
 	for (VkImageView imageView : mSwapChainImageViews)
 	{
@@ -929,9 +1048,11 @@ bool VulkanManager::createDepthResources()
 {
 	mDepthFormat = findDepthFormat();
 
-	if (!createImage(mLogicalDevice, mPhysicalDevice, mSwapChainImageExtent.width, mSwapChainImageExtent.height, 1, mMSAA_Samples, 
+	if (!createImage(mLogicalDevice, mPhysicalDevice, mSwapChainImageExtent.width, mSwapChainImageExtent.height, 1, mMSAA_Samples,
 		mDepthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		mDepthImage, mDepthMemory)) { return false; }
+		mDepthImage, mDepthMemory)) {
+		return false;
+	}
 
 	if (!createImageView(mLogicalDevice, mDepthImage, &mDepthImageView, mDepthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1)) { return false; }
 
@@ -940,13 +1061,17 @@ bool VulkanManager::createDepthResources()
 
 bool VulkanManager::createMSAA_ColorResources()
 {
-	if (!createImage(mLogicalDevice, mPhysicalDevice, mSwapChainImageExtent.width, mSwapChainImageExtent.height, 1, 
-		mMSAA_Samples, mSwapChainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | 
-		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mMSAA_ColorImage, mMSAA_ColorhMemory)) 
-		{ return false; }
+	if (!createImage(mLogicalDevice, mPhysicalDevice, mSwapChainImageExtent.width, mSwapChainImageExtent.height, 1,
+		mMSAA_Samples, mSwapChainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
+		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mMSAA_ColorImage, mMSAA_ColorhMemory))
+	{
+		return false;
+	}
 
-	if (!createImageView(mLogicalDevice, mMSAA_ColorImage, &mMSAA_ColorImageView, mSwapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1)) 
-	{ return false; }
+	if (!createImageView(mLogicalDevice, mMSAA_ColorImage, &mMSAA_ColorImageView, mSwapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1))
+	{
+		return false;
+	}
 
 	return true;
 }
@@ -1004,7 +1129,7 @@ bool VulkanManager::createCommandBuffers()
 
 bool VulkanManager::renderScene(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
-	VkCommandBufferBeginInfo beginCommandBuffInfo{};
+	/*VkCommandBufferBeginInfo beginCommandBuffInfo{};
 	beginCommandBuffInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginCommandBuffInfo.flags = 0;
 	beginCommandBuffInfo.pInheritanceInfo = nullptr;
@@ -1054,7 +1179,7 @@ bool VulkanManager::renderScene(VkCommandBuffer commandBuffer, uint32_t imageInd
 	}
 	else 
 	{
-		mVertexBufferData.draw(commandBuffer);
+		mHouseMesh.draw(commandBuffer, mCurrentFrame);
 	}
 
 	renderGUI(commandBuffer, imageIndex);
@@ -1065,134 +1190,9 @@ bool VulkanManager::renderScene(VkCommandBuffer commandBuffer, uint32_t imageInd
 	{
 		std::cout << "\nFailed to end command buffer recording..." << std::endl;
 		return false;
-	}
-
+	}*/
+	
 	return true;
-}
-
-bool VulkanManager::renderScene_DynamicRendering(VkCommandBuffer commandBuffer, uint32_t imageIndex)
-{
-	VkCommandBufferBeginInfo beginCommandBuffInfo{};
-	beginCommandBuffInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginCommandBuffInfo.flags = 0;
-	beginCommandBuffInfo.pInheritanceInfo = nullptr;
-
-	if (vkBeginCommandBuffer(commandBuffer, &beginCommandBuffInfo) != VK_SUCCESS)
-	{
-		std::cout << "\nFailed to begin recording command buffer..." << std::endl;
-		return false;
-	}
-
-	//Transitions swap chain correct formats, accesses, and stages for rendering (as resolve attachment for msaa)
-	transitionImageLayout(commandBuffer, mSwapChainImages[imageIndex], VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_2_NONE, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_2_NONE,
-		VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1, fpCmdPipelineBarrier2);
-	
-	//Transitions multisampling color attachment formats, accesses, and stages for multisample rendering
-	transitionImageLayout(commandBuffer, mMSAA_ColorImage, VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_2_NONE, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | 
-		VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT, VK_PIPELINE_STAGE_2_NONE, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 
-		VK_IMAGE_ASPECT_COLOR_BIT, 1, fpCmdPipelineBarrier2);
-
-	//Transitions depth attachment formats, accesses, and stages for multisample rendering
-	transitionImageLayout(commandBuffer, mDepthImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-		VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, 
-		VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
-		VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, 
-		VK_IMAGE_ASPECT_DEPTH_BIT, 1, fpCmdPipelineBarrier2);
-
-	VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
-	VkClearValue clearDepth = { 1.0f, 0 };
-	VkRenderingAttachmentInfoKHR colorAttachmentInfo{};
-	colorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-	colorAttachmentInfo.clearValue = clearColor;
-	colorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	colorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	colorAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	colorAttachmentInfo.imageView = mSwapChainImageViews[imageIndex];
-
-	//Adds resolve image information if using MSAA
-	if (mMSAA_Samples != VK_SAMPLE_COUNT_1_BIT)
-	{
-		colorAttachmentInfo.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
-		colorAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		colorAttachmentInfo.resolveImageView = mSwapChainImageViews[imageIndex];
-		colorAttachmentInfo.imageView = mMSAA_ColorImageView;
-	}
-
-	VkRenderingAttachmentInfoKHR depthAttachmentInfo{};
-	depthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-	depthAttachmentInfo.clearValue = clearDepth;
-	depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	depthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depthAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	depthAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-	depthAttachmentInfo.imageView = mDepthImageView;
-
-	//std::array<VkRenderingAttachmentInfoKHR, 1> colorAttachments = { colorAttachmentInfo };
-
-	VkRenderingInfoKHR renderingInfo{};
-	renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
-	renderingInfo.colorAttachmentCount = 1;
-	renderingInfo.pColorAttachments = &colorAttachmentInfo;
-	renderingInfo.renderArea.offset = { 0, 0 };
-	renderingInfo.renderArea.extent = mSwapChainImageExtent;
-	renderingInfo.layerCount = 1;
-	renderingInfo.pDepthAttachment = &depthAttachmentInfo;
-
-	fpCmdBeginRenderingKHR(commandBuffer, &renderingInfo);
-
-	mGraphicsPipeline.bindPipeline(commandBuffer);
-
-	VkViewport viewport{};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width = static_cast<float>(mSwapChainImageExtent.width);
-	viewport.height = static_cast<float>(mSwapChainImageExtent.height);
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-
-	vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-	VkRect2D scissor{};
-	scissor.offset = { 0, 0 };
-	scissor.extent = mSwapChainImageExtent;
-
-	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-	mUniformDescriptorManager.bindPipelineSpecificDescriptorSet(commandBuffer, &mGraphicsPipeline, mCurrentFrame);
-
-	const Material* material = mGraphicsPipeline.getPipelineMaterials()->empty() ? mGraphicsPipeline.getBaseMaterial() : 
-		&(*mGraphicsPipeline.getPipelineMaterials())[0];
-	mUniformDescriptorManager.bindMaterialSpecificDescriptorSet(commandBuffer, material, 
-		mCurrentFrame);
-	
-	if (mRenderingParticles)
-	{
-		mUniformDescriptorManager.bindSSBOs(commandBuffer, mCurrentFrame, PARTICLE_COUNT);
-	}
-	else 
-	{
-		mVertexBufferData.draw(commandBuffer);
-	}
-
-	fpCmdEndRenderingKHR(commandBuffer);
-
-	renderGUI_DynamicRender(mGraphicsCommandBuffers[mCurrentFrame], imageIndex);
-
-	//Transitions swap chain image to the correct formats, accesses, and stages for presenting
-	transitionImageLayout(commandBuffer, mSwapChainImages[imageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_2_NONE,
-		VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
-		VK_IMAGE_ASPECT_COLOR_BIT, 1, fpCmdPipelineBarrier2);
-
-	if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
-	{
-		std::cout << "\nFailed to end command buffer recording..." << std::endl;
-		return false;
-	}
-
-	return false;
 }
 
 void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReloadGUI_Flag)
@@ -1202,22 +1202,15 @@ void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReload
 		//Waits for device to finish up before recreating pipeline
 		vkDeviceWaitIdle(mLogicalDevice);
 
-		mRenderingParticles = mSelectedScene.sceneType == PARTICLES;
+		for (const DrawableData& drawableData : mScenes[mCurrScene].sceneGameObjects)
+		{
+			mActiveRenderGraph.removeDrawableFromRenderTree(drawableData);
+		}
 
-		vkDestroyPipeline(mLogicalDevice, mGraphicsPipeline.getPipeline(), nullptr);
-		vkDestroyPipelineLayout(mLogicalDevice, mGraphicsPipeline.getPipelineLayout(), nullptr);
+		mCurrScene++;
+		if (mCurrScene == mScenes.size()) { mCurrScene = 0; }
 
-		ConfigurablePipelineValues configValues{};
-		configValues.samples = mMSAA_Samples;
-		configValues.primitiveTopology = mRenderingParticles ? VK_PRIMITIVE_TOPOLOGY_POINT_LIST : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-		configValues.depthWriteEnabled = !mRenderingParticles;
-
-		const char* vertShader = mRenderingParticles ? "../Assets/Shaders/ByteEncoded/RenderParticles_VS.spv" : "../Assets/Shaders/ByteEncoded/BasicTriangle_VS.spv";
-		const char* fragShader = mRenderingParticles ? "../Assets/Shaders/ByteEncoded/RenderParticles_FS.spv" : "../Assets/Shaders/ByteEncoded/BasicTriangle_FS.spv";
-
-		VertexInputData vertexInputInfo = mRenderingParticles ? Particle2D::getParticleInputData() : mVertexBufferData.getVertexInputData();
-		mGraphicsPipeline.createPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat,
-			configValues, vertShader, fragShader, vertexInputInfo);
+		mActiveRenderGraph.buildRenderTree(mScenes[mCurrScene].sceneGameObjects);
 
 		mRemakePipelineTriggered = false;
 	}
@@ -1227,38 +1220,50 @@ void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReload
 		//Waits for device to finish up before recreating pipeline
 		vkDeviceWaitIdle(mLogicalDevice);
 
-		vkDestroyPipeline(mLogicalDevice, mGraphicsPipeline.getPipeline(), nullptr);
-		vkDestroyPipelineLayout(mLogicalDevice, mGraphicsPipeline.getPipelineLayout(), nullptr);
 
-		mGraphicsPipeline.setDynamicRenderingEnabled(mUsingDynamicRenderingForGUI);
-
-		//TODO: Add function in pipeline to switch from dynamic rfendering
-		if (!mUsingDynamicRenderingForGUI)
+		for (GraphicsPipeline& graphicsPipeline : mGraphicsPipelineStorageList)
 		{
-			if (mGraphicsPipeline.getRenderPass() == VK_NULL_HANDLE)
-			{
-				mGraphicsPipeline.createRenderPass(mLogicalDevice, mSwapChainImageFormat, mDepthFormat, mMSAA_Samples);
-			}
-
-			if (mGraphicsPipeline.noLoadedFramebuffers())
-			{
-				mGraphicsPipeline.createFramebuffers(mLogicalDevice, mSwapChainImageViews, mDepthImageView, mMSAA_ColorImageView,
-					mSwapChainImageExtent);
-			}
+			vkDestroyPipeline(mLogicalDevice, graphicsPipeline.getPipeline(), nullptr);
+			vkDestroyPipelineLayout(mLogicalDevice, graphicsPipeline.getPipelineLayout(), nullptr);
+			graphicsPipeline.setDynamicRenderingEnabled(mUsingDynamicRendering);
 		}
 
+		//TODO: Store pipeline create data in the class and then just call create again instead of having to pass config values again
 		ConfigurablePipelineValues configValues{};
 		configValues.samples = mMSAA_Samples;
-		configValues.primitiveTopology = mRenderingParticles ? VK_PRIMITIVE_TOPOLOGY_POINT_LIST : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-		configValues.depthWriteEnabled = !mRenderingParticles;
+		configValues.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		configValues.depthWriteEnabled = true;
+		configValues.targetDepthImage = &mDepthImage;
+		configValues.targetDepthImageView = &mDepthImageView;
+		configValues.targetMSAA_Image = &mMSAA_ColorImage;
+		configValues.targetMSAA_ImageView = &mMSAA_ColorImageView;
 
-		const char* vertShader = mRenderingParticles ? "../Assets/Shaders/ByteEncoded/RenderParticles_VS.spv" : "../Assets/Shaders/ByteEncoded/BasicTriangle_VS.spv";
-		const char* fragShader = mRenderingParticles ? "../Assets/Shaders/ByteEncoded/RenderParticles_FS.spv" : "../Assets/Shaders/ByteEncoded/BasicTriangle_FS.spv";
+		char* vertShader = "../Assets/Shaders/ByteEncoded/BasicTriangle_VS.spv";
+		char* fragShader = "../Assets/Shaders/ByteEncoded/BasicTriangle_FS.spv";
 
-		VertexInputData vertexInputInfo = mRenderingParticles ? Particle2D::getParticleInputData() : mVertexBufferData.getVertexInputData();
+		VertexInputData vertexInputInfo = mHouseMesh.getVertexInputData();
 
-		mGraphicsPipeline.createPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat, 
-			configValues, vertShader, fragShader, vertexInputInfo);
+		mGraphicsPipelineStorageList[0].createPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat, configValues,
+			vertShader, fragShader, vertexInputInfo, mSwapChainImageViews, mUsingDynamicRendering);
+
+		configValues = {};
+		configValues.samples = mMSAA_Samples;
+		configValues.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+		configValues.depthWriteEnabled = false;
+		configValues.targetDepthImage = &mDepthImage;
+		configValues.targetDepthImageView = &mDepthImageView;
+		configValues.targetMSAA_Image = &mMSAA_ColorImage;
+		configValues.targetMSAA_ImageView = &mMSAA_ColorImageView;
+
+		vertShader = "../Assets/Shaders/ByteEncoded/RenderParticles_VS.spv";
+		fragShader = "../Assets/Shaders/ByteEncoded/RenderParticles_FS.spv";
+
+		vertexInputInfo = Particle2D::getParticleInputData();
+
+		mGraphicsPipelineStorageList[1].createPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat, configValues,
+			vertShader, fragShader, vertexInputInfo, mSwapChainImageViews, mUsingDynamicRendering);
+
+		mComputePipelineStorageList[0].creatPipeline(mLogicalDevice);
 
 		mSwitchingRenderMethod = false;
 
@@ -1269,74 +1274,8 @@ void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReload
 	}
 }
 
-void VulkanManager::addGameObjectToRenderTree(const GameObject* gameObjectToAdd)
-{
-	if (mActiveRenderTree.find(gameObjectToAdd->getMaterial()->pipelineForMaterial) == mActiveRenderTree.end())
-	{
-		mActiveRenderTree[gameObjectToAdd->getMaterial()->pipelineForMaterial] = {};
-	}
-
-	if (mActiveRenderTree[gameObjectToAdd->getMaterial()->pipelineForMaterial].find(gameObjectToAdd->getMaterial()) !=
-		mActiveRenderTree[gameObjectToAdd->getMaterial()->pipelineForMaterial].end())
-	{
-		mActiveRenderTree[gameObjectToAdd->getMaterial()->pipelineForMaterial][gameObjectToAdd->getMaterial()] = {};
-	}
-
-	mActiveRenderTree[gameObjectToAdd->getMaterial()->pipelineForMaterial][gameObjectToAdd->getMaterial()].push_back(
-		gameObjectToAdd->getMesh());
-}
-
-void VulkanManager::removeGameObjectFromRenderTree(const GameObject* gameObjectToAdd)
-{
-	if (mActiveRenderTree.find(gameObjectToAdd->getMaterial()->pipelineForMaterial) == mActiveRenderTree.end())
-	{
-		return;
-	}
-
-	if (mActiveRenderTree[gameObjectToAdd->getMaterial()->pipelineForMaterial].find(gameObjectToAdd->getMaterial()) !=
-		mActiveRenderTree[gameObjectToAdd->getMaterial()->pipelineForMaterial].end())
-	{
-		return;
-	}
-
-	std::vector<const MeshGeneric*> meshList = mActiveRenderTree[gameObjectToAdd->getMaterial()->pipelineForMaterial][gameObjectToAdd->getMaterial()];
-	std::vector<const MeshGeneric*>::iterator element = std::find(meshList.begin(), meshList.end(), gameObjectToAdd->getMesh());
-	
-	if (element == meshList.end()) { return; }
-	
-	meshList.erase(element);
-}
-
-void VulkanManager::buildRenderTree(std::vector<GameObject*> activeGameObjects)
-{
-	for (const GameObject* activeGameObject : activeGameObjects)
-	{
-		addGameObjectToRenderTree(activeGameObject);
-	}
-}
-
 bool VulkanManager::recordComputeCommandBuffer(VkCommandBuffer commandBuffer)
 {
-	VkCommandBufferBeginInfo beginCommandBuffInfo{};
-	beginCommandBuffInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-	if (vkBeginCommandBuffer(commandBuffer, &beginCommandBuffInfo) != VK_SUCCESS)
-	{
-		std::cout << "\nFailed to begin recording compute command buffer..." << std::endl;
-		return false;
-	}
-
-	mComputePipeline.bindPipeline(commandBuffer);
-	mUniformDescriptorManager.bindPipelineSpecificDescriptorSet(commandBuffer, &mComputePipeline, mCurrentFrame);
-
-	vkCmdDispatch(commandBuffer, PARTICLE_COUNT / 256, 1, 1);
-
-	if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
-	{
-		std::cout << "\nFailed to end compute command buffer recording..." << std::endl;
-		return false;
-	}
-
 	return true;
 }
 
@@ -1347,8 +1286,8 @@ bool VulkanManager::createSyncObjects()
 	mImageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	mWhileRenderingFences.resize(MAX_FRAMES_IN_FLIGHT);
 
-	mComputeFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-	mWhileComputingFences.resize(MAX_FRAMES_IN_FLIGHT);
+	//mComputeFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+	//mWhileComputingFences.resize(MAX_FRAMES_IN_FLIGHT);
 
 	//This is to stop unsafe reusage of semaphores: https://docs.vulkan.org/guide/latest/swapchain_semaphore_reuse.html
 	mRenderFinishedSemaphores.resize(numSwapChainImages);
@@ -1369,12 +1308,12 @@ bool VulkanManager::createSyncObjects()
 			return false;
 		}
 
-		if (vkCreateSemaphore(mLogicalDevice, &semaphoreCreateInfo, nullptr, &mComputeFinishedSemaphores[i]) != VK_SUCCESS
+		/*if (vkCreateSemaphore(mLogicalDevice, &semaphoreCreateInfo, nullptr, &mComputeFinishedSemaphores[i]) != VK_SUCCESS
 			|| vkCreateFence(mLogicalDevice, &fenceCreateInfo, nullptr, &mWhileComputingFences[i]) != VK_SUCCESS)
 		{
 			std::cout << "\nFailed to create semaphores or fence..." << std::endl;
 			return false;
-		}
+		}*/
 	}
 
 	for (size_t i = 0; i < numSwapChainImages; i++)

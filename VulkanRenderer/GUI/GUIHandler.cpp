@@ -53,10 +53,10 @@ void GUIHandler::initImGui(GLFWwindow* window, VulkanManager* vulkanManager)
 	pipelineInfo.PipelineRenderingCreateInfo.depthAttachmentFormat = vulkanManager->getDepthFormat();
 	pipelineInfo.MSAASamples = vulkanManager->getMSAA_Samples();
 
-	if (!vulkanManager->getGraphicsPipeline()->dynamicRenderingEnabled())
-	{
-		pipelineInfo.RenderPass = vulkanManager->getGraphicsPipeline()->getRenderPass();
-	}
+	//if (!vulkanManager->getGraphicsPipeline()->dynamicRenderingEnabled())
+	//{
+	//	pipelineInfo.RenderPass = vulkanManager->getGraphicsPipeline()->getRenderPass();
+	//}
 
 	SwapChainSupportDetails swapChainSupportDetails = vulkanManager->querySwapChainSupport(vulkanManager->getPhysicalDevice());
 
@@ -76,7 +76,7 @@ void GUIHandler::initImGui(GLFWwindow* window, VulkanManager* vulkanManager)
 	initInfo.DescriptorPool = mImGuiDescriptorPool;
 	initInfo.MinImageCount = swapChainSupportDetails.capabilities.minImageCount;
 	initInfo.ImageCount = imageCount;
-	initInfo.UseDynamicRendering = vulkanManager->getGraphicsPipeline()->dynamicRenderingEnabled();
+	initInfo.UseDynamicRendering = true;
 	initInfo.PipelineInfoMain = pipelineInfo;
 
 	ImGui_ImplVulkan_Init(&initInfo);

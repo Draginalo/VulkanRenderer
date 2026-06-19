@@ -1,0 +1,28 @@
+#pragma once
+
+#include "Pipelines/Pipeline.h"
+#include "Mesh/Drawable.h"
+#include <unordered_map>
+#include <vector>
+
+struct DrawableData {
+	const Drawable* drawable;
+	Pipeline* pipelineToDrawWith;
+	const Material* materialToDrawWith = nullptr;
+};
+
+class RenderGraph {
+public:
+	void handleAddPipelineToOrderedList(Pipeline* pipelineToAdd);
+	void addDrawableToRenderTree(DrawableData drawableDataToAdd);
+	void removeDrawableFromRenderTree(const DrawableData drawableDataToRemove);
+	void buildRenderTree(std::vector<DrawableData> activeDrawablesData);
+
+	inline std::vector<Pipeline*>* getOrderedActivePipelines() { return &mActivePipelines_Ordered; }
+	inline std::unordered_map<Pipeline*, std::unordered_map<const Material*, std::vector<const Drawable*>>>& 
+		getRenderTree() { return mRenderTree; }
+private:
+	//TODO: NOT ACTUALLY "ACTIVE" PIPELINES, AS PIPELINES ARE NOT REMOVED YET WHEN NO GAME OBJECTS USE THEM ANYMORE
+	std::vector<Pipeline*> mActivePipelines_Ordered;
+	std::unordered_map<Pipeline*, std::unordered_map<const Material*, std::vector<const Drawable*>>> mRenderTree;
+};
