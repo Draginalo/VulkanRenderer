@@ -18,12 +18,15 @@ struct Transform {
 // a mesh pointer for the mesh to draw
 class GameObject {
 public:
+	GameObject() {}
+	GameObject(const Material* pMaterial, const Mesh3D* pMeshToRender) : mpMaterial(pMaterial), mpMeshToRender(pMeshToRender) {}
+
 	const Material* getMaterial() const { return mpMaterial; }
 	const Mesh3D* getMesh() const { return mpMeshToRender; }
 
 private:
-	Material* mpMaterial;
-	Mesh3D* mpMeshToRender;
+	const Material* mpMaterial;
+	const Mesh3D* mpMeshToRender;
 
 	Transform mTranform;
 	UniformDescriptorManager mUniformDescriptorManager;

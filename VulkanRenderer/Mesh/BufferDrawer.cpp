@@ -7,7 +7,7 @@ void BufferDrawer::draw(VkCommandBuffer commandBuffer, uint32_t currFrame) const
 	vkCmdDraw(commandBuffer, mBufferDrawData.numVertices, 1, 0, 0);
 }
 
-VkBuffer BufferDrawer::getLastFrameVertexBuffer()
+const VkBuffer BufferDrawer::getLastFrameVertexBuffer() const
 {
 	return (*mBufferDrawData.framesInFlightBuffers)[mBufferDrawData.framesInFlightBuffers->size() - 1];
 }

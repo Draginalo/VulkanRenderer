@@ -4,9 +4,10 @@
 #include "Mesh/Drawable.h"
 #include <unordered_map>
 #include <vector>
+#include "GameObject.h"
 
 struct DrawableData {
-	Drawable* drawable;
+	const Drawable* drawable;
 	Pipeline* pipelineToDrawWith;
 	const Material* materialToDrawWith = nullptr;
 };

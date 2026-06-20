@@ -13,7 +13,7 @@ struct BufferDrawerData {
 class BufferDrawer : public Drawable {
 public:
 	void draw(VkCommandBuffer commandBuffer, uint32_t currFrame) const override;
-    VkBuffer getLastFrameVertexBuffer() override;
+    const VkBuffer getLastFrameVertexBuffer() const override;
 	void setBufferDrawData(BufferDrawerData bufferData) { mBufferDrawData = bufferData; }
 private:
 	BufferDrawerData mBufferDrawData;

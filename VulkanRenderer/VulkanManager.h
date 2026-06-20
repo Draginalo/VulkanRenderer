@@ -194,6 +194,7 @@ private:
 	RenderGraph mActiveRenderGraph;
 
 	Mesh3D mHouseMesh;
+	GameObject mHouseGameObject;
 	BufferDrawer mParticleDrawer;
 	UniformDescriptorManager mUniformDescriptorManager;
 

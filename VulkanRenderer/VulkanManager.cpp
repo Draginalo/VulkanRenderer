@@ -48,6 +48,8 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	//Creates texture sampler for mesh
 	createTextureSampler(mLogicalDevice, mPhysicalDevice, &mTextureSampler);
 
+	//Creates the house mesh
+	mHouseMesh.createVertexDataFromModel(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue, "../Assets/Models/Room/room.obj");
 
 	////Manual defining of the uniform descriptors for the pipelines to be used
 
@@ -134,8 +136,6 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 		mLogicalDevice, mPhysicalDevice, MAX_FRAMES_IN_FLIGHT);
 	//mGraphicsPipeline.createPipelineMaterial()
 
-	//Creates the house mesh
-	mHouseMesh.createVertexDataFromModel(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue, "../Assets/Models/Room/room.obj");
 
 	//Defiens config values for scene 1 graphics pipeline creation, including shaders and the vertex input data for the vertex shader
 	ConfigurablePipelineValues configValues{};
@@ -188,14 +188,21 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	depInfo.dependsOnPipeline = &mComputePipelineStorageList[0];
 	mGraphicsPipelineStorageList[1].setDependencyInfo(depInfo);
 
+
+	mHouseGameObject = GameObject(mGraphicsPipelineStorageList[0].getBaseMaterial(), &mHouseMesh);
+
+
 	//Configure drawable data for scenes
 	std::vector<DrawableData> scene1DrawablesData = 
 	{
-		{ &mHouseMesh, &mGraphicsPipelineStorageList[0], mGraphicsPipelineStorageList[0].getBaseMaterial()},
+		//Adds game object as a drawable to render
+		{ mHouseGameObject.getMesh(), mHouseGameObject.getMaterial()->pipelineForMaterial, mHouseGameObject.getMaterial()},
 	};
 
 	std::vector<DrawableData> scene2DrawablesData =
 	{
+		//Compute pass for computing particles, followed by graphics pass for rendering particles (ordered when building render tree
+		// from established dependency on graphics pass depending on compute pass)
 		{ nullptr, &mComputePipelineStorageList[0], nullptr},
 		{ &mParticleDrawer, &mGraphicsPipelineStorageList[1], mGraphicsPipelineStorageList[1].getBaseMaterial()},
 	};

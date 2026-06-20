@@ -21,7 +21,7 @@ public:
 	void cleanupBuffers(VkDevice logicalDevice);
 
 	void draw(VkCommandBuffer commandBuffer, uint32_t currFrame) const override;
-	VkBuffer getLastFrameVertexBuffer() override;
+	const VkBuffer getLastFrameVertexBuffer() const override;
 
 	inline VertexInputData getVertexInputData() { return mVertexInputData; }
 protected:
