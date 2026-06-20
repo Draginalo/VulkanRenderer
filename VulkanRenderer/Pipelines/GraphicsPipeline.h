@@ -48,6 +48,8 @@ public:
 	void bindPipeline(VkCommandBuffer commandBuffer) override;
 	bool recordPipelineCommands(VkCommandBuffer commandBuffer, const Drawable* drawable, VkImage& swapChainImage, 
 		VkImageView& swapChainImageView, uint32_t currFrame, void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*), void (*fpCmdEndRenderingKHR)(VkCommandBuffer)) override;
+
+	inline void updateRenderExtents(VkExtent2D newExtents) { mRenderExtent = newExtents; }
 private:
 	VkRenderPass mRenderPass = VK_NULL_HANDLE;
 	std::vector<VkFramebuffer> mFramebuffers;

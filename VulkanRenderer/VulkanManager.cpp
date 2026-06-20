@@ -739,7 +739,7 @@ bool VulkanManager::supportsDeviceFeatures(VkPhysicalDevice device)
 		deviceExtendedStateFeatures.extendedDynamicState && deviceFeatures.features.samplerAnisotropy;
 }
 
-VkFormat VulkanManager::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+VkFormat VulkanManager::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const
 {
 	for (VkFormat format : candidates)
 	{
@@ -1023,16 +1023,18 @@ bool VulkanManager::recreateSwapChain(GLFWwindow* window)
 	createMSAA_ColorResources();
 	createDepthResources();
 
-	if (!mUsingDynamicRendering)
+	for (GraphicsPipeline& graphicsPipeline : mGraphicsPipelineStorageList)
 	{
-		for (GraphicsPipeline& graphicsPipeline : mGraphicsPipelineStorageList)
+		graphicsPipeline.updateRenderExtents(mSwapChainImageExtent);
+
+		if (!mUsingDynamicRendering)
 		{
 			graphicsPipeline.createFramebuffers(mLogicalDevice, mSwapChainImageViews, mDepthImageView, mMSAA_ColorImageView,
 				mSwapChainImageExtent);
 		}
 	}
-
-	return false;
+	
+	return true;
 }
 
 void VulkanManager::cleanupSwapChain()

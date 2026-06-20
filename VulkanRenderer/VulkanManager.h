@@ -129,7 +129,7 @@ private:
 	bool supportsDeviceExtensions(VkPhysicalDevice device);
 	bool supportsDeviceFeatures(VkPhysicalDevice device);
 
-	VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+	VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
 	VkFormat findDepthFormat();
 	bool hasStencilComponent(VkFormat format);
 
