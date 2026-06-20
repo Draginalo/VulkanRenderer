@@ -1,5 +1,5 @@
 #include "GraphicsPipeline.h"
-#include "../UniformDescriptorManager.h"
+#include "../UniformDescriptorHandlers/UniformDescriptorManager.h"
 #include "../Helpers/TextureImageHelpers.h"
 
 bool GraphicsPipeline::createPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat,
@@ -374,17 +374,6 @@ void GraphicsPipeline::bindPipeline(VkCommandBuffer commandBuffer)
 bool GraphicsPipeline::recordPipelineCommands(VkCommandBuffer commandBuffer, const Drawable* drawable, VkImage& swapChainImage,
 	VkImageView& swapChainImageView, uint32_t currFrame, void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*), void (*fpCmdEndRenderingKHR)(VkCommandBuffer))
 {
-	/*VkCommandBufferBeginInfo beginCommandBuffInfo{};
-	beginCommandBuffInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginCommandBuffInfo.flags = 0;
-	beginCommandBuffInfo.pInheritanceInfo = nullptr;
-
-	if (vkBeginCommandBuffer(commandBuffer, &beginCommandBuffInfo) != VK_SUCCESS)
-	{
-		std::cout << "\nFailed to begin recording command buffer..." << std::endl;
-		return false;
-	}*/
-
 	//Transitions swap chain correct formats, accesses, and stages for rendering (as resolve attachment for msaa)
 	transitionImageLayout(commandBuffer, swapChainImage, VK_IMAGE_LAYOUT_UNDEFINED,
 		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_2_NONE, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_2_NONE,

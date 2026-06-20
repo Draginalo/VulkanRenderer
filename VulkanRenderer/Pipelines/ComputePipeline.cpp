@@ -1,6 +1,6 @@
 #include "ComputePipeline.h"
 
-bool ComputePipeline::creatPipeline(VkDevice logicalDevice)
+bool ComputePipeline::creatPipeline(VkDevice logicalDevice, glm::uvec3 groupCount, glm::uvec3 groupCountDivisor)
 {
 	if (*mPipelineDescriptorSetData.getDescriptorSetLayout() == VK_NULL_HANDLE) 
 	{
@@ -41,6 +41,9 @@ bool ComputePipeline::creatPipeline(VkDevice logicalDevice)
 
 	vkDestroyShaderModule(logicalDevice, computeShaderModule, nullptr);
 
+	mGroupCount = groupCount;
+	mGroupCountDivisor = groupCountDivisor;
+
 	return true;
 }
 
@@ -52,13 +55,10 @@ void ComputePipeline::bindPipeline(VkCommandBuffer commandBuffer)
 bool ComputePipeline::recordPipelineCommands(VkCommandBuffer commandBuffer, const Drawable* drawable, VkImage& swapChainImage, 
 	VkImageView& swapChainImageView, uint32_t currFrame, void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*), void (*fpCmdEndRenderingKHR)(VkCommandBuffer))
 {
-	vkCmdDispatch(commandBuffer, 256000 / 256, 1, 1);
-
-	/*if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
-	{
-		std::cout << "\nFailed to end compute command buffer recording..." << std::endl;
-		return false;
-	}*/
+	vkCmdDispatch(commandBuffer, 
+		mGroupCount.x / mGroupCountDivisor.x, 
+		mGroupCount.y / mGroupCountDivisor.y, 
+		mGroupCount.z / mGroupCountDivisor.z);
 
 	return true;
 }

@@ -24,7 +24,7 @@
 #include "Pipelines/ComputePipeline.h"
 #include "Mesh/Mesh3D.h"
 #include "Mesh/BufferDrawer.h"
-#include "UniformDescriptorManager.h"
+#include "UniformDescriptorHandlers/UniformDescriptorManager.h"
 #include "Helpers/TextureImageHelpers.h"
 #include "UniformDescriptorHandlers/UniformDescriptors/UniformBufferDescriptor.h"
 #include "UniformDescriptorHandlers/UniformDescriptors/UniformImageDescriptor.h"
@@ -150,8 +150,6 @@ private:
 
 	bool createCommandPool();
 	bool createCommandBuffers();
-
-	bool recordComputeCommandBuffer(VkCommandBuffer commandBuffer);
 
 	void handleInjectPipelineMemoryBarriers(VkCommandBuffer commandBuffer, Pipeline* sourcePipeline);
 

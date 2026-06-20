@@ -1,5 +1,5 @@
 #include "UniformDescriptorManager.h"
-#include "Helpers/BufferHelpers.h"
+#include "../Helpers/BufferHelpers.h"
 
 void UniformDescriptorManager::createPipelineSpecificDescriptorSets(std::vector<Pipeline*> pipelines, VkDevice logicalDevice,
 	VkPhysicalDevice physicalDevice, int maxFramesInFlight)

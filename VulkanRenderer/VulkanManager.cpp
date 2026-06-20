@@ -174,7 +174,7 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 		vertShader, fragShader, vertexInputInfo, mSwapChainImageViews, mUsingDynamicRendering);
 
 	//Creates scene 2 compute pipeline
-	mComputePipelineStorageList[0].creatPipeline(mLogicalDevice);
+	mComputePipelineStorageList[0].creatPipeline(mLogicalDevice, glm::uvec3(PARTICLE_COUNT, 1, 1), glm::uvec3(256, 1, 1));
 
 	//Marks the scene 2 graphics pipeline to depend on the scene 2 compute pipeline because it renders the particles after the 
 	// compute pipeline modifies them (TODO: Make this automatically detected)
@@ -1150,7 +1150,7 @@ void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReload
 {
 	if (mSwapScenesTriggered)
 	{
-		//Waits for device to finish up before recreating pipeline
+		//Waits for device to finish up before switching scene
 		vkDeviceWaitIdle(mLogicalDevice);
 
 		for (const DrawableData& drawableData : mScenes[mCurrScene].sceneGameObjects)
@@ -1171,7 +1171,7 @@ void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReload
 
 	if (mSwitchingRenderMethod)
 	{
-		//Waits for device to finish up before recreating pipeline
+		//Waits for device to finish up before recreating pipelines
 		vkDeviceWaitIdle(mLogicalDevice);
 
 		for (GraphicsPipeline& graphicsPipeline : mGraphicsPipelineStorageList)
@@ -1225,11 +1225,6 @@ void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReload
 			*needToReloadGUI_Flag = true;
 		}
 	}
-}
-
-bool VulkanManager::recordComputeCommandBuffer(VkCommandBuffer commandBuffer)
-{
-	return true;
 }
 
 void VulkanManager::handleInjectPipelineMemoryBarriers(VkCommandBuffer commandBuffer, Pipeline* sourcePipeline)

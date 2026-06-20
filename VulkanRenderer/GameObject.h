@@ -5,7 +5,7 @@
 
 #include "Pipelines//GraphicsPipeline.h"
 #include "Mesh/Mesh3D.h"
-#include "UniformDescriptorManager.h"
+#include "UniformDescriptorHandlers/UniformDescriptorManager.h"
 
 struct Transform {
 	glm::vec3 position;

@@ -120,7 +120,7 @@ void RenderGraph::handleRegisterDrawableDependencyData(DrawableData drawableData
 			buffBarrier.size = buffDescriptor.getDataSize();
 			buffBarrier.offset = buffDescriptor.getOffset();
 
-			//Adds memory barrier data to pipeline (TODO: Since this memory barrier data is based on a specific draawable and not a 
+			//Adds memory barrier data to pipeline (TODO: Since this memory barrier data is based on a specific drawable and not a 
 			// whole pipeline, perhaps look into injecting memory barriers per object)
 			depInfo->buffMemBarriers.push_back(buffBarrier);
 		}

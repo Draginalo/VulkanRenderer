@@ -12,9 +12,9 @@
 #include <array>
 #include <chrono>
 
-#include "Helpers/VertexInputData.h"
-#include "UniformDescriptorHandlers/DescriptorSetData.h"
-#include "Pipelines/Pipeline.h"
+#include "../Helpers/VertexInputData.h"
+#include "DescriptorSetData.h"
+#include "../Pipelines/Pipeline.h"
 
 //Uniform buffer struct for mvp matrecies with explicit alignment specefied to match shader uniform alignment
 // Could also use #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES but does not always catch alignment for nested structs
