@@ -19,6 +19,7 @@ public:
 	inline const bool getSourceFromPastFrame() const { return mSourceFromPastFrame; }
 	inline const VkDeviceSize getDataSize() const { return mBufferInfo.range; }
 	inline const VkDeviceSize getOffset() const { return mBufferInfo.offset; }
+	inline const VkBuffer getCurrBuffer() const { return mBufferInfo.buffer; }
 
 	inline VkDescriptorSetLayoutBinding getDescriptorSetLayoutBinding() override {
 		VkDescriptorSetLayoutBinding layout{};

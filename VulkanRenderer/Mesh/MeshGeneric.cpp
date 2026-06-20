@@ -95,3 +95,8 @@ void MeshGeneric::draw(VkCommandBuffer commandBuffer, uint32_t currFrame) const
 
 	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(mIndecies.size()), 1, 0, 0, 0);
 }
+
+VkBuffer MeshGeneric::getLastFrameVertexBuffer()
+{
+	return mVertexBuffer;
+}

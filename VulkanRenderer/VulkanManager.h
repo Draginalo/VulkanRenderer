@@ -144,15 +144,16 @@ private:
 	bool recreateSwapChain(GLFWwindow* window);
 	void cleanupSwapChain();
 
-	bool createImageViews();
+	bool createSwapChainImageViews();
 	bool createDepthResources();
 	bool createMSAA_ColorResources();
 
 	bool createCommandPool();
 	bool createCommandBuffers();
-	bool renderScene(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
 	bool recordComputeCommandBuffer(VkCommandBuffer commandBuffer);
+
+	void handleInjectPipelineMemoryBarriers(VkCommandBuffer commandBuffer, Pipeline* sourcePipeline);
 
 	bool createSyncObjects();
 
@@ -197,8 +198,7 @@ private:
 	UniformDescriptorManager mUniformDescriptorManager;
 
 	VkCommandPool mCommandPool;
-	std::vector<VkCommandBuffer> mGraphicsCommandBuffers;
-	std::vector<VkCommandBuffer> mComputeCommandBuffers;
+	std::vector<VkCommandBuffer> mCommandBuffers;
 
 	//Graphics semaphores and fences
 	std::vector<VkSemaphore> mImageAvailableSemaphores;
@@ -214,7 +214,7 @@ private:
 
 	bool mRenderingParticles = true;
 	bool mFramebuffersResized = false;
-	bool mRemakePipelineTriggered = false;
+	bool mSwapScenesTriggered = false;
 	bool mSwitchingRenderMethod = false;
 	bool mUsingDynamicRenderingForGUI = true; //For ImGui display, to not imediately switch with the one for logic while still rendering
 	bool mUsingDynamicRendering = true;
@@ -237,6 +237,9 @@ private:
 	VkSampleCountFlagBits mMSAA_Samples = VK_SAMPLE_COUNT_1_BIT;
 
 	VkDebugUtilsMessengerEXT mDebugMessanger;
+
+	DeltaTimeUniformObject mDtUniformObject{};
+	ModelViewProjectionUniformObject mMVP_UniformObject{};
 
 	const std::vector<const char*> mValidationLayers = {
 		"VK_LAYER_KHRONOS_validation"

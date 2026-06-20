@@ -18,8 +18,8 @@ struct Material {
 
 struct PipelineDependencyInfo {
 	//TODO: Expand this to depend on multiple pipelines with other types of memory barriers that are not tied to a specific pipeline
-	Pipeline* mDependsOnPipeline = nullptr;
-	VkBufferMemoryBarrier mBufferMemoryDependency;
+	Pipeline* dependsOnPipeline = nullptr;
+	std::vector<VkBufferMemoryBarrier2> buffMemBarriers;
 };
 
 class Pipeline {
@@ -45,12 +45,22 @@ public:
 	{ mPipelineDescriptorSetData.createDescriptorSetLayout(logicalDevice); }
 
 	inline void createBaseMaterialDescriptorSetLayout(VkDevice logicalDevice)
-	{ mBaseMaterial.materialDescriptorSetData.createDescriptorSetLayout(logicalDevice); }
+	{ 
+		//Only creates the descriptor set data if there are descriptors to add
+		if (mBaseMaterial.materialDescriptorSetData.getTotalDescriptorsForMaterial() != 0)
+		{
+			mBaseMaterial.materialDescriptorSetData.createDescriptorSetLayout(logicalDevice);
+		}
+	}
 
 	inline bool createBaseMaterialDescriptorSetData(VkDevice logicalDevice, VkDescriptorPool descriptorPool,
 		BufferData* destUniformBuffers, BufferData* destStorageBuffers, int maxFramesInFlight) 
 	{
 		mBaseMaterial.pipelineForMaterial = this;
+
+		//Only creates the descriptor set data if there are descriptors to add
+		if (mBaseMaterial.materialDescriptorSetData.getTotalDescriptorsForMaterial() == 0) { return true;} 
+
 		return mBaseMaterial.materialDescriptorSetData.createDescriptorSetData(logicalDevice, descriptorPool, destUniformBuffers,
 			destStorageBuffers, maxFramesInFlight);
 	}
@@ -105,7 +115,7 @@ public:
 	inline bool getIsComputePipeline() { return mIsComputePipeline; }
 
 	inline void setDependencyInfo(PipelineDependencyInfo dependencyInfo) { mDependencyInfo = dependencyInfo; } 
-	inline const PipelineDependencyInfo* getPipelineDependencyInfo() const { return &mDependencyInfo; }
+	inline PipelineDependencyInfo* getPipelineDependencyInfo() { return &mDependencyInfo; }
 
 	virtual inline void bindPipeline(VkCommandBuffer commandBuffer) = 0;
 protected:

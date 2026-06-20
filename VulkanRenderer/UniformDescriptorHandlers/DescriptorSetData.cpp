@@ -21,6 +21,8 @@ void DescriptorSetData::loadDescriptors(std::vector<UniformBufferDescriptor> uni
 		}
 	}
 
+	mTotalDescriptorsForMaterial += numUniformBufferDescriptors + uniformImageDescriptors.size();
+
 	mUniformBufferDescriptors = uniformBufferDescriptors;
 	mUniformImageDescriptors = uniformImageDescriptors;
 }
@@ -102,7 +104,7 @@ std::vector<VkDescriptorSetLayoutBinding> DescriptorSetData::getLayoutBindings()
 	return layoutBindings;
 }
 
-std::vector<VkWriteDescriptorSet> DescriptorSetData::getWriteDescriptorSets(VkDescriptorSet destSet, BufferData* destUniformBuffers, 
+std::vector<VkWriteDescriptorSet> DescriptorSetData::getWriteDescriptorSets(VkDescriptorSet destSet, BufferData* destUniformBuffers,
 	BufferData* destStorageBuffers, size_t currFrame)
 {
 	size_t numPipelineUniformBuffers = mUniformBufferDescriptors.size();

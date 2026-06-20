@@ -164,40 +164,9 @@ bool UniformDescriptorManager::createSSBOs(VkDevice logicalDevice, VkPhysicalDev
 	return true;
 }
 
-void UniformDescriptorManager::updatePipelineSpecificUniformBuffers(std::vector<Pipeline*> activePipelines, int currFrame, 
-	float aspectRatio, float dt)
+void UniformDescriptorManager::updatePipelineSpecificUniformBuffer(Pipeline* pipeline, int currFrame)
 {
-	static std::chrono::steady_clock::time_point startTime = std::chrono::high_resolution_clock::now();
-	std::chrono::steady_clock::time_point currentTime = std::chrono::high_resolution_clock::now();
-
-	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-	ModelViewProjectionUniformObject mvpUniformObject{};
-	mvpUniformObject.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	mvpUniformObject.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	mvpUniformObject.proj = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 10.0f);
-
-	//Flips y scaling factor since glm presumes inverted y coord
-	mvpUniformObject.proj[1][1] *= -1;
-
-	if (activePipelines.size() > 1)
-	{
-		DeltaTimeUniformObject dtUniformObject{};
-		dtUniformObject.dt = dt;
-
-		activePipelines[0]->getPipelineBufferDescriptorRef(0)->setDataPointer(&dtUniformObject);
-	}
-	else {
-		activePipelines[0]->getPipelineBufferDescriptorRef(0)->setDataPointer(&mvpUniformObject);
-	}
-
-	//mDescriptorSetData.getUniformDescriptors()[1]->getUniformObjectData().memPointer = &dtUniformObject;
-	//mDescriptorSetData.getUniformDescriptors()[1]->getUniformObssjectData().size = sizeof(dtUniformObject);
-
-	for (const Pipeline* pipeline : activePipelines)
-	{
-		pipeline->getPipelineDescriptorSetData()->updateBufferUniforms(mPipelineUniformBuffersMapped[currFrame]);
-	}
+	pipeline->getPipelineDescriptorSetData()->updateBufferUniforms(mPipelineUniformBuffersMapped[currFrame]);
 }
 
 void UniformDescriptorManager::bindPipelineSpecificDescriptorSet(VkCommandBuffer commandBuffer, Pipeline* pipeline, 
@@ -212,6 +181,9 @@ void UniformDescriptorManager::bindPipelineSpecificDescriptorSet(VkCommandBuffer
 
 void UniformDescriptorManager::bindMaterialSpecificDescriptorSet(VkCommandBuffer commandBuffer, const Material* material, int currFrame)
 {
+	//Doesn't bind anything if there are no descriptors for material
+	if (material == nullptr || material->materialDescriptorSetData.getTotalDescriptorsForMaterial() == 0) { return; }
+
 	VkPipelineBindPoint bindPoint = material->pipelineForMaterial->getIsComputePipeline() ?
 		VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
 

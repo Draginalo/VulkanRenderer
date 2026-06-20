@@ -52,13 +52,6 @@ void ComputePipeline::bindPipeline(VkCommandBuffer commandBuffer)
 bool ComputePipeline::recordPipelineCommands(VkCommandBuffer commandBuffer, const Drawable* drawable, VkImage& swapChainImage, 
 	VkImageView& swapChainImageView, uint32_t currFrame, void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*), void (*fpCmdEndRenderingKHR)(VkCommandBuffer))
 {
-	bindPipeline(commandBuffer);
-	VkPipelineBindPoint bindPoint = getIsComputePipeline() ?
-		VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
-
-	vkCmdBindDescriptorSets(commandBuffer, bindPoint, getPipelineLayout(), 0, 1,
-		getPipelineDescriptorSetData()->getDescriptorSet(currFrame), 0, nullptr);
-
 	vkCmdDispatch(commandBuffer, 256000 / 256, 1, 1);
 
 	/*if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)

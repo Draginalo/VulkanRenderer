@@ -6,7 +6,7 @@
 #include <vector>
 
 struct DrawableData {
-	const Drawable* drawable;
+	Drawable* drawable;
 	Pipeline* pipelineToDrawWith;
 	const Material* materialToDrawWith = nullptr;
 };
@@ -17,6 +17,9 @@ public:
 	void addDrawableToRenderTree(DrawableData drawableDataToAdd);
 	void removeDrawableFromRenderTree(const DrawableData drawableDataToRemove);
 	void buildRenderTree(std::vector<DrawableData> activeDrawablesData);
+
+	void handleRegisterDrawableDependencyData(DrawableData drawableData);
+	void handleRegisterPipelineDependencyData(Pipeline* pipeline);
 
 	inline std::vector<Pipeline*>* getOrderedActivePipelines() { return &mActivePipelines_Ordered; }
 	inline std::unordered_map<Pipeline*, std::unordered_map<const Material*, std::vector<const Drawable*>>>& 

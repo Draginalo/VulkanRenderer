@@ -19,8 +19,8 @@ bool GraphicsPipeline::createPipeline(VkDevice logicalDevice, VkExtent2D viewpor
 	VkDescriptorSetLayout* pipelineLayout = mPipelineDescriptorSetData.getDescriptorSetLayout();
 	VkDescriptorSetLayout* baseMatLayout = mBaseMaterial.materialDescriptorSetData.getDescriptorSetLayout();
 
-	if (pipelineLayout != nullptr) { layouts.push_back(*pipelineLayout); }
-	if (baseMatLayout != nullptr) { layouts.push_back(*baseMatLayout); }
+	if (*pipelineLayout != VK_NULL_HANDLE) { layouts.push_back(*pipelineLayout); }
+	if (*baseMatLayout != VK_NULL_HANDLE) { layouts.push_back(*baseMatLayout); }
 
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
 	pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -206,7 +206,7 @@ bool GraphicsPipeline::createPipeline(VkDevice logicalDevice, VkExtent2D viewpor
 
 	mMSAA_PipelineSamples = configValues.samples;
 
-	if (mDynamicRenderingEnabled)
+	if (!mDynamicRenderingEnabled)
 	{
 		createRenderPass(logicalDevice, colorAttachmentFormat, depthAttachmentFormat, mMSAA_PipelineSamples);
 		createFramebuffers(logicalDevice, swapChainImageViews, *mDepthImageView, *mMSAA_ImageView,
@@ -444,8 +444,6 @@ bool GraphicsPipeline::recordPipelineCommands(VkCommandBuffer commandBuffer, con
 
 	fpCmdBeginRenderingKHR(commandBuffer, &renderingInfo);
 
-	bindPipeline(commandBuffer);
-
 	VkViewport viewport{};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
@@ -461,21 +459,6 @@ bool GraphicsPipeline::recordPipelineCommands(VkCommandBuffer commandBuffer, con
 	scissor.extent = mRenderExtent;
 
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-	VkPipelineBindPoint bindPoint = getIsComputePipeline() ?
-		VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
-
-	vkCmdBindDescriptorSets(commandBuffer, bindPoint, getPipelineLayout(), 0, 1,
-		getPipelineDescriptorSetData()->getDescriptorSet(currFrame), 0, nullptr);
-
-	const Material* material = getPipelineMaterials()->empty() ? getBaseMaterial() :
-		&(*getPipelineMaterials())[0];
-
-	bindPoint = material->pipelineForMaterial->getIsComputePipeline() ?
-		VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
-
-	vkCmdBindDescriptorSets(commandBuffer, bindPoint, material->pipelineForMaterial->getPipelineLayout(), 1, 1,
-		material->materialDescriptorSetData.getDescriptorSet(currFrame), 0, nullptr);
 
 	drawable->draw(commandBuffer, currFrame);
 

@@ -38,7 +38,7 @@ public:
 	void createMaterialSpecificDescriptorSets(std::vector<Material*> materials, VkDevice logicalDevice,
 		VkPhysicalDevice physicalDevice, int maxFramesInFlight);
 
-	void updatePipelineSpecificUniformBuffers(std::vector<Pipeline*> activePipelines, int currFrame, float aspectRatio, float dt);
+	void updatePipelineSpecificUniformBuffer(Pipeline* pipeline, int currFrame);
 	void bindPipelineSpecificDescriptorSet(VkCommandBuffer commandBuffer, Pipeline* pipeline, int currFrame);
 	void bindMaterialSpecificDescriptorSet(VkCommandBuffer commandBuffer, const Material* material, int currFrame);
 

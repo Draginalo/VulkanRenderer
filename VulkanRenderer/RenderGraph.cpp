@@ -5,15 +5,18 @@ void RenderGraph::handleAddPipelineToOrderedList(Pipeline* pipelineToAdd)
 	int pipelineCount = mActivePipelines_Ordered.size();
 	int lastPipelineToDependOn = -1;
 	int lastPipelineThatDependsOn = -1;
+
+	handleRegisterPipelineDependencyData(pipelineToAdd);
+
 	for (int i = 0; i < pipelineCount; i++)
 	{
 		//TODO: Add automatic detection of pipeline dependency here and setting of memory barrier for pipeline here
-		if (pipelineToAdd->getPipelineDependencyInfo()->mDependsOnPipeline == mActivePipelines_Ordered[i])
+		if (pipelineToAdd->getPipelineDependencyInfo()->dependsOnPipeline == mActivePipelines_Ordered[i])
 		{
 			lastPipelineToDependOn = i;
 		}
 
-		if (mActivePipelines_Ordered[i]->getPipelineDependencyInfo()->mDependsOnPipeline == pipelineToAdd)
+		if (mActivePipelines_Ordered[i]->getPipelineDependencyInfo()->dependsOnPipeline == pipelineToAdd)
 		{
 			lastPipelineThatDependsOn = i;
 		}
@@ -44,6 +47,8 @@ void RenderGraph::addDrawableToRenderTree(DrawableData drawableDataToAdd)
 
 	mRenderTree[drawableDataToAdd.pipelineToDrawWith][drawableDataToAdd.materialToDrawWith].push_back(
 		drawableDataToAdd.drawable);
+
+	handleRegisterDrawableDependencyData(drawableDataToAdd);
 }
 
 void RenderGraph::removeDrawableFromRenderTree(const DrawableData drawableDataToRemove)
@@ -89,5 +94,63 @@ void RenderGraph::buildRenderTree(std::vector<DrawableData> activeDrawablesData)
 	for (const DrawableData& activeDrawableData : activeDrawablesData)
 	{
 		addDrawableToRenderTree(activeDrawableData);
+	}
+}
+
+void RenderGraph::handleRegisterDrawableDependencyData(DrawableData drawableData)
+{
+	//Handles checking if drawable being added has a dependencies from another pipeline (such as the drawable rendering a buffer being 
+	// written to by another active pipeline)
+	if (drawableData.drawable == nullptr) { return; }
+
+	Pipeline* pipelineToDependOn = drawableData.pipelineToDrawWith->getPipelineDependencyInfo()->dependsOnPipeline;
+
+	if (pipelineToDependOn == nullptr) { return; }
+
+	//Forms memory barrier data for the buffers that are outputs on the pipeline marked as depending on and are inputs for drawing 
+	// the current drawable
+	PipelineDependencyInfo* depInfo = drawableData.pipelineToDrawWith->getPipelineDependencyInfo();
+	for (const UniformBufferDescriptor& buffDescriptor : *pipelineToDependOn->getPipelineDescriptorSetData()->getUniformBufferDescriptors())
+	{
+		if (buffDescriptor.getCurrBuffer() == drawableData.drawable->getLastFrameVertexBuffer())
+		{
+			VkBufferMemoryBarrier2 buffBarrier{};
+			buffBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+			buffBarrier.buffer = buffDescriptor.getCurrBuffer();
+			buffBarrier.size = buffDescriptor.getDataSize();
+			buffBarrier.offset = buffDescriptor.getOffset();
+
+			//Adds memory barrier data to pipeline (TODO: Since this memory barrier data is based on a specific draawable and not a 
+			// whole pipeline, perhaps look into injecting memory barriers per object)
+			depInfo->buffMemBarriers.push_back(buffBarrier);
+		}
+	}
+}
+
+void RenderGraph::handleRegisterPipelineDependencyData(Pipeline* pipeline)
+{
+	Pipeline* pipelineToDependOn = pipeline->getPipelineDependencyInfo()->dependsOnPipeline;
+
+	if (pipelineToDependOn == nullptr) { return; }
+
+	//Forms memory barrier data for the buffers that are outputs on the pipeline marked as depending on and are inputs for  
+	// the current pipeline
+	PipelineDependencyInfo* depInfo = pipeline->getPipelineDependencyInfo();
+	for (const UniformBufferDescriptor& buffDescriptor : *pipelineToDependOn->getPipelineDescriptorSetData()->getUniformBufferDescriptors())
+	{
+		for (const UniformBufferDescriptor& otherBuffDescriptor : *pipeline->getPipelineDescriptorSetData()->getUniformBufferDescriptors())
+		{
+			if (buffDescriptor.getCurrBuffer() == otherBuffDescriptor.getCurrBuffer())
+			{
+				VkBufferMemoryBarrier2 buffBarrier{};
+				buffBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+				buffBarrier.buffer = buffDescriptor.getCurrBuffer();
+				buffBarrier.size = buffDescriptor.getDataSize();
+				buffBarrier.offset = buffDescriptor.getOffset();
+
+				//Adds memory barrier
+				depInfo->buffMemBarriers.push_back(buffBarrier);
+			}
+		}
 	}
 }

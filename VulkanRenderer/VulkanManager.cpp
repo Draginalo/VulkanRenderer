@@ -9,22 +9,31 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 {
 	std::cout << "\nInitializing Vulkan" << std::endl;
 
+	//Window set up
 	glfwSetWindowUserPointer(window, this);
 	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 
+	//Vulkan set up
 	createInstance();
 	setUpDebugMessenger();
 	createSurface(window);
 	pickPhysicalDevice();
 	createLogicalDevice();
 	createSwapChain(window);
-	createImageViews();
+	createSwapChainImageViews();
+	createCommandPool();
+	createCommandBuffers();
 
+	//Creates global color and depth attachments
 	createDepthResources();
 	createMSAA_ColorResources();
 
-	createCommandPool();
+	//Creates synchronization objects and adds extension function pointers
+	createSyncObjects();
+	registerExtensionFunctions(mInstance);
 
+	//Loads texture for model (TODO: Combine this with model loading in a dedicated model loader to save the texture and model in a 
+	// storage list somewhere lfor assigning pointers to those assets)
 	uint32_t texMipLevels;
 	createTextureImage(mLogicalDevice, mPhysicalDevice, mTextureImage, mTextureMemory, mCommandPool, mGraphicsQueue,
 		"../Assets/Models/Room/room.png", texMipLevels);
@@ -36,66 +45,78 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 		return false;
 	}
 
+	//Creates texture sampler for mesh
 	createTextureSampler(mLogicalDevice, mPhysicalDevice, &mTextureSampler);
 
-	std::vector<UniformBufferDescriptor> descriptos;
 
-	UniformBufferDescriptor des1{};
-	des1.setDstBinding(0);
+	////Manual defining of the uniform descriptors for the pipelines to be used
+
+	std::vector<UniformBufferDescriptor> scene1BuffDescriptors;
+
+	//Defines model view projection uniform for the model in scene 1.
+	// TODO: Make the VP part into a global uniform and then add a push constant for the model matrix of each model/GameObject
+	UniformBufferDescriptor mvpDescriptor{};
+	mvpDescriptor.setDstBinding(0);
 	VkDescriptorBufferInfo bufferInfo{};
 	bufferInfo.offset = 0;
 	bufferInfo.range = sizeof(ModelViewProjectionUniformObject);
-	des1.setBufferInfo(bufferInfo);
-	descriptos.push_back(des1);
+	mvpDescriptor.setBufferInfo(bufferInfo);
+	mvpDescriptor.setDataPointer(&mMVP_UniformObject);
+	scene1BuffDescriptors.push_back(mvpDescriptor);
 
-	std::vector<UniformImageDescriptor> descriptos1;
+	//Defines texture uniform descriptor for base material of the pipeline that will render the model
+	std::vector<UniformImageDescriptor> scene1Material_ImgDescriptors;
+
 	VkDescriptorImageInfo imageInfo{};
 	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	imageInfo.imageView = mTextureImageView;
 	imageInfo.sampler = mTextureSampler;
 
-	std::vector<UniformBufferDescriptor> descriptos2;
+	UniformImageDescriptor meshMaterialTextureDescriptor{};
+	meshMaterialTextureDescriptor.setImageInfo(imageInfo);
+	meshMaterialTextureDescriptor.setDstBinding(1);
+	scene1Material_ImgDescriptors.push_back(meshMaterialTextureDescriptor);
 
-	UniformBufferDescriptor des3{};
-	des3 = UniformBufferDescriptor(PIPELINE_SPECIFIC, 0, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, sizeof(DeltaTimeUniformObject));
-	descriptos2.push_back(des3);
+	std::vector<UniformBufferDescriptor> scene2BuffComputeDescriptors;
 
-	UniformBufferDescriptor des4{};
-	des4 = UniformBufferDescriptor(PIPELINE_SPECIFIC, 1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 
-		sizeof(Particle2D) * PARTICLE_COUNT, nullptr, true);
-	descriptos2.push_back(des4);
+	//Defines the uniform descriptor for delta time for the compute scene
+	UniformBufferDescriptor dtDescriptor{};
+	dtDescriptor = UniformBufferDescriptor(PIPELINE_SPECIFIC, 0, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
+		sizeof(DeltaTimeUniformObject), &mDtUniformObject);
+	scene2BuffComputeDescriptors.push_back(dtDescriptor);
 
-	UniformBufferDescriptor des5{};
-	des5 = UniformBufferDescriptor(PIPELINE_SPECIFIC, 2, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-		sizeof(Particle2D) * PARTICLE_COUNT);
-	descriptos2.push_back(des5);
+	//Defines the descriptor for the previous compute particle data
+	UniformBufferDescriptor prevParticleDescriptor{};
+	prevParticleDescriptor = UniformBufferDescriptor(PIPELINE_SPECIFIC, 1, VK_SHADER_STAGE_COMPUTE_BIT, 
+		VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, sizeof(Particle2D) * PARTICLE_COUNT, nullptr, true);
+	scene2BuffComputeDescriptors.push_back(prevParticleDescriptor);
 
-	imageInfo = {};
-	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	imageInfo.imageView = mTextureImageView;
-	imageInfo.sampler = mTextureSampler;
+	//Defines the descriptor for the current particle data
+	UniformBufferDescriptor currParticleDescriptor{};
+	currParticleDescriptor = UniformBufferDescriptor(PIPELINE_SPECIFIC, 2, VK_SHADER_STAGE_COMPUTE_BIT, 
+		VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, sizeof(Particle2D) * PARTICLE_COUNT);
+	scene2BuffComputeDescriptors.push_back(currParticleDescriptor);
 
-	UniformImageDescriptor des2{};
-	des2.setImageInfo(imageInfo);
-	des2.setDstBinding(1);
-	descriptos1.push_back(des2);
-
+	//Creates scene 1 graphics pipeline and saves it as a pointer to load and create it's data
 	mGraphicsPipelineStorageList.push_back({});
 	GraphicsPipeline* scene1GraphicsPipeline = &mGraphicsPipelineStorageList[mGraphicsPipelineStorageList.size() - 1];
 
-	scene1GraphicsPipeline->loadPipelineDescriptorSetData(descriptos, {}, MAX_FRAMES_IN_FLIGHT);
-	scene1GraphicsPipeline->loadBaseMaterialDescriptorSetData({}, descriptos1, MAX_FRAMES_IN_FLIGHT);
+	scene1GraphicsPipeline->loadPipelineDescriptorSetData(scene1BuffDescriptors, {}, MAX_FRAMES_IN_FLIGHT);
+	scene1GraphicsPipeline->loadBaseMaterialDescriptorSetData({}, scene1Material_ImgDescriptors, MAX_FRAMES_IN_FLIGHT);
 
+	//Creates scene 2 graphics pipeline and saves it as a pointer to load and create it's data
 	mGraphicsPipelineStorageList.push_back({});
 	GraphicsPipeline* scene1GraphicsPipeline2 = &mGraphicsPipelineStorageList[mGraphicsPipelineStorageList.size() - 1];
 
 	scene1GraphicsPipeline2->loadPipelineDescriptorSetData({}, {}, MAX_FRAMES_IN_FLIGHT);
 	scene1GraphicsPipeline2->loadBaseMaterialDescriptorSetData({}, {}, MAX_FRAMES_IN_FLIGHT);
 
+	//Creates scene 1 compute pipeline and saves it as a pointer to load and create it's data
 	mComputePipelineStorageList.push_back({});
 	ComputePipeline* scene2ComputePipeline = &mComputePipelineStorageList[mComputePipelineStorageList.size() - 1];
-	scene2ComputePipeline->loadPipelineDescriptorSetData(descriptos2, {}, MAX_FRAMES_IN_FLIGHT);
+	scene2ComputePipeline->loadPipelineDescriptorSetData(scene2BuffComputeDescriptors, {}, MAX_FRAMES_IN_FLIGHT);
 
+	//Adds all the created scenes to a vector of all the scenes to be created
 	std::vector<Pipeline*> allPipelines;
 	for (int i = 0; i < mGraphicsPipelineStorageList.size(); i++)
 	{
@@ -107,32 +128,16 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 		allPipelines.push_back(&mComputePipelineStorageList[i]);
 	}
 
+	//Creates the descriptor pool and descriptor sets for all the pipelines to be created
 	mUniformDescriptorManager.createDescriptorPool(mLogicalDevice, allPipelines, MAX_FRAMES_IN_FLIGHT);
 	mUniformDescriptorManager.createPipelineSpecificDescriptorSets(allPipelines, 
 		mLogicalDevice, mPhysicalDevice, MAX_FRAMES_IN_FLIGHT);
 	//mGraphicsPipeline.createPipelineMaterial()
 
-	std::vector<Particle2D> particles(PARTICLE_COUNT);
-
-	std::default_random_engine rngEngine((unsigned)time(nullptr));
-	std::uniform_real_distribution<float> rngRange(0.0f, 1.0f);
-
-	for (int i = 0; i < PARTICLE_COUNT; i++)
-	{
-		float r = 0.25 * sqrt(rngRange(rngEngine));
-		float theta = rngRange(rngEngine) * 2.0 * 3.14159f;
-		float x = r * cos(theta) * (mSwapChainImageExtent.height / (float)mSwapChainImageExtent.width);
-		float y = r * sin(theta);
-		particles[i].position = glm::vec2(x, y);
-		particles[i].velocity = glm::normalize(particles[i].position) * 0.00025f * (rngRange(rngEngine) + 0.3f);
-		particles[i].color = glm::vec3(rngRange(rngEngine), rngRange(rngEngine), rngRange(rngEngine));
-	}
-
-	mUniformDescriptorManager.addDataToSSBOs(mLogicalDevice, mPhysicalDevice, particles.data(), 
-		mComputePipelineStorageList[0].getPipelineBufferDescriptor(2));
-
+	//Creates the house mesh
 	mHouseMesh.createVertexDataFromModel(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue, "../Assets/Models/Room/room.obj");
 
+	//Defiens config values for scene 1 graphics pipeline creation, including shaders and the vertex input data for the vertex shader
 	ConfigurablePipelineValues configValues{};
 	configValues.samples = mMSAA_Samples;
 	configValues.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -150,6 +155,7 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	mGraphicsPipelineStorageList[0].createPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat, configValues,
 		vertShader, fragShader, vertexInputInfo, mSwapChainImageViews, mUsingDynamicRendering);
 
+	//Defiens config values for scene 2 graphics pipeline creation
 	configValues = {};
 	configValues.samples = mMSAA_Samples;
 	configValues.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
@@ -167,12 +173,11 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	mGraphicsPipelineStorageList[1].createPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat, configValues,
 		vertShader, fragShader, vertexInputInfo, mSwapChainImageViews, mUsingDynamicRendering);
 
+	//Creates scene 2 compute pipeline
 	mComputePipelineStorageList[0].creatPipeline(mLogicalDevice);
 
-	createCommandBuffers();
-	createSyncObjects();
-	registerExtensionFunctions(mInstance);
-
+	//Marks the scene 2 graphics pipeline to depend on the scene 2 compute pipeline because it renders the particles after the 
+	// compute pipeline modifies them (TODO: Make this automatically detected)
 	BufferDrawerData particleDrawData{};
 	particleDrawData.framesInFlightBuffers = mUniformDescriptorManager.getPipelineDescriptorSSBO();
 	particleDrawData.numVertices = PARTICLE_COUNT;
@@ -180,9 +185,10 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	mParticleDrawer.setBufferDrawData(particleDrawData);
 
 	PipelineDependencyInfo depInfo{};
-	depInfo.mDependsOnPipeline = &mComputePipelineStorageList[0];
-	mGraphicsPipelineStorageList[0].setDependencyInfo(depInfo);
+	depInfo.dependsOnPipeline = &mComputePipelineStorageList[0];
+	mGraphicsPipelineStorageList[1].setDependencyInfo(depInfo);
 
+	//Configure drawable data for scenes
 	std::vector<DrawableData> scene1DrawablesData = 
 	{
 		{ &mHouseMesh, &mGraphicsPipelineStorageList[0], mGraphicsPipelineStorageList[0].getBaseMaterial()},
@@ -197,8 +203,30 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	mScenes.push_back({ MODEL, scene1DrawablesData, "Render Model", true });
 	mScenes.push_back({ PARTICLES, scene2DrawablesData, "Render Particles", false });
 
+	//Loads current scene by building the render graph tree with that scene's drawables
 	mSelectedScene = mScenes[mCurrScene];
 	mActiveRenderGraph.buildRenderTree(mScenes[mCurrScene].sceneGameObjects);
+	
+
+	//Fills initial particle data
+	std::vector<Particle2D> particles(PARTICLE_COUNT);
+
+	std::default_random_engine rngEngine((unsigned)time(nullptr));
+	std::uniform_real_distribution<float> rngRange(0.0f, 1.0f);
+
+	for (int i = 0; i < PARTICLE_COUNT; i++)
+	{
+		float r = 0.25 * sqrt(rngRange(rngEngine));
+		float theta = rngRange(rngEngine) * 2.0 * 3.14159f;
+		float x = r * cos(theta) * (mSwapChainImageExtent.height / (float)mSwapChainImageExtent.width);
+		float y = r * sin(theta);
+		particles[i].position = glm::vec2(x, y);
+		particles[i].velocity = glm::normalize(particles[i].position) * 0.00025f * (rngRange(rngEngine) + 0.3f);
+		particles[i].color = glm::vec3(rngRange(rngEngine), rngRange(rngEngine), rngRange(rngEngine));
+	}
+
+	mUniformDescriptorManager.addDataToSSBOs(mLogicalDevice, mPhysicalDevice, particles.data(),
+		mComputePipelineStorageList[0].getPipelineBufferDescriptor(2));
 
 	return true;
 }
@@ -214,9 +242,6 @@ bool VulkanManager::cleanupVulkan()
 	{
 		vkDestroySemaphore(mLogicalDevice, mImageAvailableSemaphores[i], nullptr);
 		vkDestroyFence(mLogicalDevice, mWhileRenderingFences[i], nullptr);
-
-		//vkDestroySemaphore(mLogicalDevice, mComputeFinishedSemaphores[i], nullptr);
-		//vkDestroyFence(mLogicalDevice, mWhileComputingFences[i], nullptr);
 	}
 
 	for (size_t i = 0; i < numSwapChainImages; i++)
@@ -273,6 +298,20 @@ bool VulkanManager::drawFrame(GLFWwindow* window, float dt, bool* needToReloadGU
 {
 	VkSubmitInfo submitInfo{};
 
+
+	//Updating of global uniforms
+	mDtUniformObject.dt = dt;
+
+	static std::chrono::steady_clock::time_point startTime = std::chrono::high_resolution_clock::now();
+	std::chrono::steady_clock::time_point currentTime = std::chrono::high_resolution_clock::now();
+
+	float time = std::chrono::duration<float, std::chrono::seconds::period>(startTime - currentTime).count();
+
+	mMVP_UniformObject.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	mMVP_UniformObject.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	mMVP_UniformObject.proj = glm::perspective(glm::radians(45.0f), mSwapChainImageExtent.width / (float)mSwapChainImageExtent.height, 0.1f, 10.0f);
+	mMVP_UniformObject.proj[1][1] *= -1;
+
 	//CPU waits until fence has been signaled by GPU (rendering done from last iteration of this frame in flight's index)
 	vkWaitForFences(mLogicalDevice, 1, &mWhileRenderingFences[mCurrentFrame], VK_TRUE, UINT64_MAX);
 
@@ -294,86 +333,71 @@ bool VulkanManager::drawFrame(GLFWwindow* window, float dt, bool* needToReloadGU
 
 	//Resets fence only if image has been aquired
 	vkResetFences(mLogicalDevice, 1, &mWhileRenderingFences[mCurrentFrame]);
-	vkResetCommandBuffer(mGraphicsCommandBuffers[mCurrentFrame], 0);
+	vkResetCommandBuffer(mCommandBuffers[mCurrentFrame], 0);
 
-	if (mUsingDynamicRendering)
+	//Begins command buffer recording for rendering scene (TODO: Split up into multiple command buffers probobly,
+	// depending on being a graphics or compute pipeline perhaps)
+	VkCommandBufferBeginInfo beginCommandBuffInfo{};
+	beginCommandBuffInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+	if (vkBeginCommandBuffer(mCommandBuffers[mCurrentFrame], &beginCommandBuffInfo) != VK_SUCCESS)
 	{
-		VkCommandBufferBeginInfo beginCommandBuffInfo{};
-		beginCommandBuffInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		std::cout << "\nFailed to begin recording command buffer..." << std::endl;
+		return false;
+	}
 
-		if (vkBeginCommandBuffer(mGraphicsCommandBuffers[mCurrentFrame], &beginCommandBuffInfo) != VK_SUCCESS)
+	//Loops though all active pipelines that are used by the drawables in the active scene
+	for (Pipeline* pipelineToRender : *mActiveRenderGraph.getOrderedActivePipelines())
+	{
+		//Updates the uniform buffer data of the current pipeline by copying up to date data into buffers
+		mUniformDescriptorManager.updatePipelineSpecificUniformBuffer(pipelineToRender, mCurrentFrame);
+
+		//Binds next active pipeline
+		pipelineToRender->bindPipeline(mCommandBuffers[mCurrentFrame]);
+
+		//Binds pipeline specific descriptor sets
+		mUniformDescriptorManager.bindPipelineSpecificDescriptorSet(mCommandBuffers[mCurrentFrame], pipelineToRender,
+			mCurrentFrame);
+
+		//Injects memory barriers for next pipeline if they exist (for example if a graphics pipeline renders the result of a 
+		// compute pipeline)
+		handleInjectPipelineMemoryBarriers(mCommandBuffers[mCurrentFrame], pipelineToRender);
+
+		//Loops through all active materials being used by game objects in active scene
+		for (const std::pair<const Material*, std::vector<const Drawable*>>& materialsToRender :
+			mActiveRenderGraph.getRenderTree()[pipelineToRender])
 		{
-			std::cout << "\nFailed to begin recording compute command buffer..." << std::endl;
-			return false;
-		}
+			const Material* material = materialsToRender.first == nullptr ? pipelineToRender->getBaseMaterial() :
+				materialsToRender.first;
 
-		mUniformDescriptorManager.updatePipelineSpecificUniformBuffers({ *mActiveRenderGraph.getOrderedActivePipelines() }, mCurrentFrame,
-			mSwapChainImageExtent.width / (float)mSwapChainImageExtent.height, dt);
+			//Binds material specific descriptor sets for all materials that inherit from a core pipeline (binds nothing
+			// if no descriptos are defined for the pipelines material, often the case for compute pipelines)
+			mUniformDescriptorManager.bindMaterialSpecificDescriptorSet(mCommandBuffers[mCurrentFrame], material, 
+				mCurrentFrame);
 
-		for (Pipeline* pipelineToRender : *mActiveRenderGraph.getOrderedActivePipelines())
-		{
-			/*mUniformDescriptorManager.bindPipelineSpecificDescriptorSet(mGraphicsCommandBuffers[mCurrentFrame], &mGraphicsPipeline,
-				mCurrentFrame);*/
-
-			for (const std::pair<const Material*, std::vector<const Drawable*>>& materialsToRender :
-				mActiveRenderGraph.getRenderTree()[pipelineToRender])
+			//Executes all drawable/executables (mesh rendering or compute dispatches) by material (or by pipeline for compute)
+			for (const Drawable* currDrawable : materialsToRender.second)
 			{
-				const PipelineDependencyInfo* depInfo = pipelineToRender->getPipelineDependencyInfo();
-				if (depInfo->mDependsOnPipeline != nullptr)
-				{
-					
-					VkBufferMemoryBarrier2 buffBarrier{};
-					buffBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
-					buffBarrier.buffer = (*mUniformDescriptorManager.getPipelineDescriptorSSBO())[mCurrentFrame];
-					buffBarrier.size = sizeof(Particle2D) * PARTICLE_COUNT;
-					buffBarrier.offset = 0;
-
-					VkDependencyInfo dependencyInfo{};
-					dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-					dependencyInfo.dependencyFlags = 0;
-					dependencyInfo.bufferMemoryBarrierCount = 1;
-					dependencyInfo.pBufferMemoryBarriers = &buffBarrier;
-
-					fpCmdPipelineBarrier2(mGraphicsCommandBuffers[mCurrentFrame], &dependencyInfo);
-				}
-
-				if (!pipelineToRender->getIsComputePipeline())
-				{
-					/*const Material* material = pipelineToRender->getPipelineMaterials()->empty() ? pipelineToRender->getBaseMaterial() :
-					&(*pipelineToRender->getPipelineMaterials())[0]*/;
-					/*mUniformDescriptorManager.bindMaterialSpecificDescriptorSet(mGraphicsCommandBuffers[mCurrentFrame],
-						materialsToRender.first, mCurrentFrame);*/
-				}
-
-				for (const Drawable* currDrawable : materialsToRender.second)
-				{
-					pipelineToRender->recordPipelineCommands(mGraphicsCommandBuffers[mCurrentFrame], currDrawable,
-						mSwapChainImages[imageIndex], mSwapChainImageViews[imageIndex], mCurrentFrame, fpCmdBeginRenderingKHR,
-						fpCmdEndRenderingKHR);
-				}
+				pipelineToRender->recordPipelineCommands(mCommandBuffers[mCurrentFrame], currDrawable,
+					mSwapChainImages[imageIndex], mSwapChainImageViews[imageIndex], mCurrentFrame, fpCmdBeginRenderingKHR,
+					fpCmdEndRenderingKHR);
 			}
 		}
-
-		renderGUI_DynamicRender(mGraphicsCommandBuffers[mCurrentFrame], imageIndex);
-
-		//Transitions swap chain image to the correct formats, accesses, and stages for presenting
-		transitionImageLayout(mGraphicsCommandBuffers[mCurrentFrame], mSwapChainImages[imageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_2_NONE,
-			VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
-			VK_IMAGE_ASPECT_COLOR_BIT, 1, fpCmdPipelineBarrier2);
-
-		if (vkEndCommandBuffer(mGraphicsCommandBuffers[mCurrentFrame]) != VK_SUCCESS)
-		{
-			std::cout << "\nFailed to end command buffer recording..." << std::endl;
-			return false;
-		}
 	}
-	else 
-	{
-		mUniformDescriptorManager.updatePipelineSpecificUniformBuffers(*mActiveRenderGraph.getOrderedActivePipelines(), mCurrentFrame,
-			mSwapChainImageExtent.width / (float)mSwapChainImageExtent.height, dt);
 
-		renderScene(mGraphicsCommandBuffers[mCurrentFrame], imageIndex);
+	//Renders ImGui
+	renderGUI_DynamicRender(mCommandBuffers[mCurrentFrame], imageIndex);
+
+	//Transitions swap chain image to the correct formats, accesses, and stages for presenting
+	transitionImageLayout(mCommandBuffers[mCurrentFrame], mSwapChainImages[imageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_2_NONE,
+		VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
+		VK_IMAGE_ASPECT_COLOR_BIT, 1, fpCmdPipelineBarrier2);
+
+	if (vkEndCommandBuffer(mCommandBuffers[mCurrentFrame]) != VK_SUCCESS)
+	{
+		std::cout << "\nFailed to end command buffer recording..." << std::endl;
+		return false;
 	}
 
 	//Only adds the compute shader wait semephore if actually rendering the particles which depend on the compute shader
@@ -386,7 +410,7 @@ bool VulkanManager::drawFrame(GLFWwindow* window, float dt, bool* needToReloadGU
 	submitInfo.pWaitSemaphores = waitSemaphores.data();
 	submitInfo.pWaitDstStageMask = waitStages;
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &mGraphicsCommandBuffers[mCurrentFrame];
+	submitInfo.pCommandBuffers = &mCommandBuffers[mCurrentFrame];
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &mRenderFinishedSemaphores[imageIndex];
 
@@ -995,7 +1019,7 @@ bool VulkanManager::recreateSwapChain(GLFWwindow* window)
 	vkFreeMemory(mLogicalDevice, mMSAA_ColorhMemory, nullptr);
 
 	createSwapChain(window);
-	createImageViews();
+	createSwapChainImageViews();
 	createMSAA_ColorResources();
 	createDepthResources();
 
@@ -1026,7 +1050,7 @@ void VulkanManager::cleanupSwapChain()
 	vkDestroySwapchainKHR(mLogicalDevice, mSwapChain, nullptr);
 }
 
-bool VulkanManager::createImageViews()
+bool VulkanManager::createSwapChainImageViews()
 {
 	int imageCount = mSwapChainImages.size();
 	mSwapChainImageViews.resize(imageCount);
@@ -1096,7 +1120,7 @@ bool VulkanManager::createCommandPool()
 
 bool VulkanManager::createCommandBuffers()
 {
-	mGraphicsCommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+	mCommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
 	VkCommandBufferAllocateInfo commandBufAllocateInfo{};
 	commandBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1104,100 +1128,18 @@ bool VulkanManager::createCommandBuffers()
 	commandBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	commandBufAllocateInfo.commandBufferCount = (uint32_t)MAX_FRAMES_IN_FLIGHT;
 
-	if (vkAllocateCommandBuffers(mLogicalDevice, &commandBufAllocateInfo, mGraphicsCommandBuffers.data()) != VK_SUCCESS)
+	if (vkAllocateCommandBuffers(mLogicalDevice, &commandBufAllocateInfo, mCommandBuffers.data()) != VK_SUCCESS)
 	{
 		std::cout << "\nFailed to allocate graphics command buffers..." << std::endl;
 		return false;
 	}
 
-	mComputeCommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-
-	commandBufAllocateInfo = {};
-	commandBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	commandBufAllocateInfo.commandPool = mCommandPool;
-	commandBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	commandBufAllocateInfo.commandBufferCount = (uint32_t)MAX_FRAMES_IN_FLIGHT;
-
-	if (vkAllocateCommandBuffers(mLogicalDevice, &commandBufAllocateInfo, mComputeCommandBuffers.data()) != VK_SUCCESS)
-	{
-		std::cout << "\nFailed to allocate compute command buffers..." << std::endl;
-		return false;
-	}
-
-	return true;
-}
-
-bool VulkanManager::renderScene(VkCommandBuffer commandBuffer, uint32_t imageIndex)
-{
-	/*VkCommandBufferBeginInfo beginCommandBuffInfo{};
-	beginCommandBuffInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginCommandBuffInfo.flags = 0;
-	beginCommandBuffInfo.pInheritanceInfo = nullptr;
-
-	if (vkBeginCommandBuffer(commandBuffer, &beginCommandBuffInfo) != VK_SUCCESS)
-	{
-		std::cout << "\nFailed to begin recording command buffer..." << std::endl;
-		return false;
-	}
-	
-	std::array<VkClearValue, 2> clearValues{};
-	clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
-	clearValues[1].depthStencil = { 1.0f, 0 };
-
-	VkRenderPassBeginInfo renderPassBeginInfo = mGraphicsPipeline.getRenderPassBeginInfo(imageIndex, mSwapChainImageExtent, 
-		clearValues);
-
-	vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-	mGraphicsPipeline.bindPipeline(commandBuffer);
-
-	VkViewport viewport{};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width = static_cast<float>(mSwapChainImageExtent.width);
-	viewport.height = static_cast<float>(mSwapChainImageExtent.height);
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-
-	vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-	VkRect2D scissor{};
-	scissor.offset = { 0, 0 };
-	scissor.extent = mSwapChainImageExtent;
-
-	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-	mUniformDescriptorManager.bindPipelineSpecificDescriptorSet(commandBuffer, &mGraphicsPipeline, mCurrentFrame);
-	const Material* material = mGraphicsPipeline.getPipelineMaterials()->empty() ? mGraphicsPipeline.getBaseMaterial() :
-		&(*mGraphicsPipeline.getPipelineMaterials())[0];
-	mUniformDescriptorManager.bindMaterialSpecificDescriptorSet(commandBuffer, material,
-		mCurrentFrame);
-	
-	if (mRenderingParticles)
-	{
-		mUniformDescriptorManager.bindSSBOs(commandBuffer, mCurrentFrame, PARTICLE_COUNT);
-	}
-	else 
-	{
-		mHouseMesh.draw(commandBuffer, mCurrentFrame);
-	}
-
-	renderGUI(commandBuffer, imageIndex);
-
-	vkCmdEndRenderPass(commandBuffer);
-
-	if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
-	{
-		std::cout << "\nFailed to end command buffer recording..." << std::endl;
-		return false;
-	}*/
-	
 	return true;
 }
 
 void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReloadGUI_Flag)
 {
-	if (mRemakePipelineTriggered)
+	if (mSwapScenesTriggered)
 	{
 		//Waits for device to finish up before recreating pipeline
 		vkDeviceWaitIdle(mLogicalDevice);
@@ -1207,12 +1149,15 @@ void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReload
 			mActiveRenderGraph.removeDrawableFromRenderTree(drawableData);
 		}
 
+		mScenes[mCurrScene].selected = false;
+
 		mCurrScene++;
 		if (mCurrScene == mScenes.size()) { mCurrScene = 0; }
 
 		mActiveRenderGraph.buildRenderTree(mScenes[mCurrScene].sceneGameObjects);
+		mScenes[mCurrScene].selected = true;
 
-		mRemakePipelineTriggered = false;
+		mSwapScenesTriggered = false;
 	}
 
 	if (mSwitchingRenderMethod)
@@ -1220,9 +1165,10 @@ void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReload
 		//Waits for device to finish up before recreating pipeline
 		vkDeviceWaitIdle(mLogicalDevice);
 
-
 		for (GraphicsPipeline& graphicsPipeline : mGraphicsPipelineStorageList)
 		{
+			graphicsPipeline.cleanupFrambuffers(mLogicalDevice);
+			graphicsPipeline.cleanupRenderPass(mLogicalDevice);
 			vkDestroyPipeline(mLogicalDevice, graphicsPipeline.getPipeline(), nullptr);
 			vkDestroyPipelineLayout(mLogicalDevice, graphicsPipeline.getPipelineLayout(), nullptr);
 			graphicsPipeline.setDynamicRenderingEnabled(mUsingDynamicRendering);
@@ -1263,8 +1209,6 @@ void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReload
 		mGraphicsPipelineStorageList[1].createPipeline(mLogicalDevice, mSwapChainImageExtent, mSwapChainImageFormat, mDepthFormat, configValues,
 			vertShader, fragShader, vertexInputInfo, mSwapChainImageViews, mUsingDynamicRendering);
 
-		mComputePipelineStorageList[0].creatPipeline(mLogicalDevice);
-
 		mSwitchingRenderMethod = false;
 
 		if (needToReloadGUI_Flag != nullptr)
@@ -1279,15 +1223,27 @@ bool VulkanManager::recordComputeCommandBuffer(VkCommandBuffer commandBuffer)
 	return true;
 }
 
+void VulkanManager::handleInjectPipelineMemoryBarriers(VkCommandBuffer commandBuffer, Pipeline* sourcePipeline)
+{
+	const PipelineDependencyInfo* depInfo = sourcePipeline->getPipelineDependencyInfo();
+	if (depInfo->dependsOnPipeline != nullptr)
+	{
+		VkDependencyInfo dependencyInfo{};
+		dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		dependencyInfo.dependencyFlags = 0;
+		dependencyInfo.bufferMemoryBarrierCount = static_cast<uint32_t>(depInfo->buffMemBarriers.size());
+		dependencyInfo.pBufferMemoryBarriers = depInfo->buffMemBarriers.data();
+
+		fpCmdPipelineBarrier2(commandBuffer, &dependencyInfo);
+	}
+}
+
 bool VulkanManager::createSyncObjects()
 {
 	int numSwapChainImages = mSwapChainImages.size();
 
 	mImageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	mWhileRenderingFences.resize(MAX_FRAMES_IN_FLIGHT);
-
-	//mComputeFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-	//mWhileComputingFences.resize(MAX_FRAMES_IN_FLIGHT);
 
 	//This is to stop unsafe reusage of semaphores: https://docs.vulkan.org/guide/latest/swapchain_semaphore_reuse.html
 	mRenderFinishedSemaphores.resize(numSwapChainImages);
@@ -1307,13 +1263,6 @@ bool VulkanManager::createSyncObjects()
 			std::cout << "\nFailed to create semaphores or fence..." << std::endl;
 			return false;
 		}
-
-		/*if (vkCreateSemaphore(mLogicalDevice, &semaphoreCreateInfo, nullptr, &mComputeFinishedSemaphores[i]) != VK_SUCCESS
-			|| vkCreateFence(mLogicalDevice, &fenceCreateInfo, nullptr, &mWhileComputingFences[i]) != VK_SUCCESS)
-		{
-			std::cout << "\nFailed to create semaphores or fence..." << std::endl;
-			return false;
-		}*/
 	}
 
 	for (size_t i = 0; i < numSwapChainImages; i++)
@@ -1414,7 +1363,7 @@ void VulkanManager::updateGUI()
 			if (ImGui::Selectable(scene.name.c_str(), &scene.selected))
 			{
 				mSelectedScene = scene;
-				mRemakePipelineTriggered = true;
+				mSwapScenesTriggered = true;
 			}
 		}
 		ImGui::EndCombo();

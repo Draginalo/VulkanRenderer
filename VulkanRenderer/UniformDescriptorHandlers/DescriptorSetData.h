@@ -38,6 +38,8 @@ public:
 	inline const VkDescriptorSet* getDescriptorSet(int currFrame) const { return &mDescriptorSets[currFrame]; }
 	inline VkDescriptorSetLayout* getDescriptorSetLayout() { return &mDescriptorSetLayout; }
 
+	inline const uint32_t getTotalDescriptorsForMaterial() const { return mTotalDescriptorsForMaterial; }
+
 	inline void cleanup(VkDevice logicalDevice) const { vkDestroyDescriptorSetLayout(logicalDevice, mDescriptorSetLayout, nullptr); }
 private:
 	VkDescriptorSetLayout mDescriptorSetLayout = nullptr;
@@ -48,4 +50,6 @@ private:
 
 	std::vector<UniformBufferDescriptor> mUniformBufferDescriptors;
 	std::vector<UniformImageDescriptor> mUniformImageDescriptors;
+
+	uint32_t mTotalDescriptorsForMaterial = 0;
 };
