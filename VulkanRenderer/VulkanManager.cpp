@@ -147,8 +147,8 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	configValues.targetMSAA_Image = &mMSAA_ColorImage;
 	configValues.targetMSAA_ImageView = &mMSAA_ColorImageView;
 
-	char* vertShader = "../Assets/Shaders/ByteEncoded/BasicTriangle_VS.spv";
-	char* fragShader = "../Assets/Shaders/ByteEncoded/BasicTriangle_FS.spv";
+	char* vertShader = "../Assets/Shaders/ByteEncoded/RenderModel_VS.spv";
+	char* fragShader = "../Assets/Shaders/ByteEncoded/RenderModel_FS.spv";
 
 	VertexInputData vertexInputInfo = mHouseMesh.getVertexInputData();
 
@@ -1193,8 +1193,8 @@ void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReload
 		configValues.targetMSAA_Image = &mMSAA_ColorImage;
 		configValues.targetMSAA_ImageView = &mMSAA_ColorImageView;
 
-		char* vertShader = "../Assets/Shaders/ByteEncoded/BasicTriangle_VS.spv";
-		char* fragShader = "../Assets/Shaders/ByteEncoded/BasicTriangle_FS.spv";
+		char* vertShader = "../Assets/Shaders/ByteEncoded/RenderModel_VS.spv";
+		char* fragShader = "../Assets/Shaders/ByteEncoded/RenderModel_FS.spv";
 
 		VertexInputData vertexInputInfo = mHouseMesh.getVertexInputData();
 
