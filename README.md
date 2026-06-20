@@ -2,7 +2,7 @@
 
 Building a custom Vulkan renderer!
 
-<img width="195" height="125" alt="vulkan" src="https://github.com/user-attachments/assets/cfc144cc-8d7c-410d-babb-48bbd387990e" />
+<img width="390" height="250" alt="vulkan" src="https://github.com/user-attachments/assets/cfc144cc-8d7c-410d-babb-48bbd387990e" />
 
 Supports dynamic rendering, MSAA, graphics + compute pipelines, GPU CPU synchronization, pipeline changes at runtime, CMake build systems, and more.
 
