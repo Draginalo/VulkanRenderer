@@ -48,8 +48,9 @@ void Pipeline::createPipelineMaterial(std::vector<UniformBufferDescriptor> unifo
 {
 	for (const UniformBufferDescriptor& baseBufferDescriptor : (*mBaseMaterial.materialDescriptorSetData.getUniformBufferDescriptors()))
 	{
-		if (std::find(uniformBufferDescriptors.begin(), uniformBufferDescriptors.end(), baseBufferDescriptor) == 
-			uniformBufferDescriptors.end())
+        std::vector<int> t;
+		if (std::find(uniformBufferDescriptors.begin(), uniformBufferDescriptors.end(), baseBufferDescriptor) ==
+                uniformBufferDescriptors.end())
 		{
 			throw std::runtime_error("New material does not follow base material buffer descriptor types");
 		}

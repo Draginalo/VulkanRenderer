@@ -3,6 +3,11 @@
 #include "vulkan/vulkan.h"
 #include "../UniformDescriptorHandlers/DescriptorSetData.h"
 
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <complex>
+#include <initializer_list>
 #include <iostream>
 #include <fstream>
 #include <vector>
