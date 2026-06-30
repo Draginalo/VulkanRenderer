@@ -1,5 +1,7 @@
 get_filename_component(ROOT_DIR ../ ABSOLUTE)
 
+MESSAGE(STATUS "Root Directory For Shaders: ${ROOT_DIR}")
+
 file(
  GLOB_RECURSE SHADERS_SRC CONFIGURE_DEPENDS
  ${ROOT_DIR}/Assets/*.vert
@@ -28,7 +30,6 @@ foreach(shader_src IN LISTS SHADERS_SRC)
 	)
 
 	list(APPEND SPV_SHADERS ${SHADER_OUT})
-	MESSAGE(STATUS "SHADERS2: ${SHADER_OUT}")
 endforeach()
 
 add_custom_target(COMPILED_SHADERS ALL DEPENDS ${SPV_SHADERS})

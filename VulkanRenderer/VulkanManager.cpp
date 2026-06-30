@@ -309,8 +309,8 @@ bool VulkanManager::drawFrame(GLFWwindow* window, float dt, bool* needToReloadGU
 	//Updating of global uniforms
 	mDtUniformObject.dt = dt;
 
-	static std::chrono::system_clock::time_point startTime = std::chrono::high_resolution_clock::now();
-	std::chrono::system_clock::time_point currentTime = std::chrono::high_resolution_clock::now();
+	static std::chrono::steady_clock::time_point startTime = std::chrono::steady_clock::now();
+	std::chrono::steady_clock::time_point currentTime = std::chrono::steady_clock::now();
 
 	float time = std::chrono::duration<float, std::chrono::seconds::period>(startTime - currentTime).count();
 
