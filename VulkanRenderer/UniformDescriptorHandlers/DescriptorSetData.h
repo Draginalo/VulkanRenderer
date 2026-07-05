@@ -10,46 +10,52 @@
 struct BufferData {
 	std::vector<VkBuffer> buffers;
 	uint32_t currentlyAllocatedSize = 0;
+
+	//Padding for compiler warning
+	uint8_t padding[4];
 };
 
 class DescriptorSetData {
 public:
 	void loadDescriptors(std::vector<UniformBufferDescriptor> uniformBufferDescriptors,
-		std::vector<UniformImageDescriptor> uniformImageDescriptors, int maxFramesInFlight);
+		std::vector<UniformImageDescriptor> uniformImageDescriptors);
 
 	bool createDescriptorSetLayout(VkDevice logicalDevice);
 	bool createDescriptorSetData(VkDevice logicalDevice, VkDescriptorPool descriptorPool, BufferData* destUniformBuffers, 
-		BufferData* destStorageBuffers, int maxFramesInFlight);
+		BufferData* destStorageBuffers, uint32_t maxFramesInFlight);
 
 	std::vector<VkDescriptorSetLayoutBinding> getLayoutBindings();
 	std::vector<VkWriteDescriptorSet> getWriteDescriptorSets(VkDescriptorSet destSet, BufferData* destUniformBuffers, 
-		BufferData* destStorageBuffers, size_t currFrame);
-	inline const std::vector<UniformBufferDescriptor>* getUniformBufferDescriptors() const { return &mUniformBufferDescriptors; }
-	inline const std::vector<UniformImageDescriptor>* getUniformImageDescriptors() const { return &mUniformImageDescriptors; }
+		BufferData* destStorageBuffers, uint32_t currFrame);
+	const std::vector<UniformBufferDescriptor>* getUniformBufferDescriptors() const;
+	const std::vector<UniformImageDescriptor>* getUniformImageDescriptors() const;
 
 	//Dev remove this 
-	inline std::vector<UniformBufferDescriptor>* getUniformBufferDescriptorsRef() { return &mUniformBufferDescriptors; }
+	std::vector<UniformBufferDescriptor>* getUniformBufferDescriptorsRef();
 
 	void updateBufferUniforms(void* destBuffer) const;
 
-	inline const VkDeviceSize getTotalUniformBufferSize() const { return mTotalUniformBufferSize; }
-	inline const VkDeviceSize getTotalStorageBufferSize() const { return mTotalStorageBufferSize; }
+	VkDeviceSize getTotalUniformBufferSize() const;
+	VkDeviceSize getTotalStorageBufferSize() const;
 
-	inline const VkDescriptorSet* getDescriptorSet(int currFrame) const { return &mDescriptorSets[currFrame]; }
-	inline VkDescriptorSetLayout* getDescriptorSetLayout() { return &mDescriptorSetLayout; }
+	const VkDescriptorSet* getDescriptorSet(uint32_t currFrame) const;
+	VkDescriptorSetLayout* getDescriptorSetLayout();
 
-	inline const uint32_t getTotalDescriptorsForMaterial() const { return mTotalDescriptorsForMaterial; }
+	uint32_t getTotalDescriptorsForMaterial() const;
 
-	inline void cleanup(VkDevice logicalDevice) const { vkDestroyDescriptorSetLayout(logicalDevice, mDescriptorSetLayout, nullptr); }
+	void cleanup(VkDevice logicalDevice) const;
 private:
-	VkDescriptorSetLayout mDescriptorSetLayout = nullptr;
+	std::vector<UniformBufferDescriptor> mUniformBufferDescriptors;
+	std::vector<UniformImageDescriptor> mUniformImageDescriptors;
 	std::vector<VkDescriptorSet> mDescriptorSets;
+
+	VkDescriptorSetLayout mDescriptorSetLayout = nullptr;
 
 	VkDeviceSize mTotalUniformBufferSize = 0;
 	VkDeviceSize mTotalStorageBufferSize = 0;
 
-	std::vector<UniformBufferDescriptor> mUniformBufferDescriptors;
-	std::vector<UniformImageDescriptor> mUniformImageDescriptors;
-
 	uint32_t mTotalDescriptorsForMaterial = 0;
+
+	//Padding for compiler warning
+	uint8_t padding[4] = {};
 };

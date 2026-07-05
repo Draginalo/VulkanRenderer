@@ -5,8 +5,7 @@
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/vec4.hpp>
-#include <glm/mat4x4.hpp>
+#include <glm/glm.hpp>
 #include "vulkan/vulkan.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -41,30 +40,15 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 	VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 	VkDebugUtilsMessageTypeFlagsEXT messageType,
 	const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-	void* pUserData) {
-	std::cerr << "Validation Layer: " << pCallbackData->pMessage << std::endl;
-
-	return VK_FALSE;
-}
+	void* pUserData);
 
 struct QueueFamiliesIndexStore {
 	int graphicsFamalyIndex = -1;
 	int computeFamalyIndex = -1;
 	int presentFamalyIndex = -1;
 
-	bool containsAllFamilies()
-	{
-		return graphicsFamalyIndex != -1 && computeFamalyIndex != -1 && presentFamalyIndex != -1;
-	}
-
-	std::set<uint32_t> getVectorOfIndecies()
-	{
-		return std::set<uint32_t> {
-			static_cast<uint32_t>(graphicsFamalyIndex),
-			static_cast<uint32_t>(computeFamalyIndex),
-			static_cast<uint32_t>(presentFamalyIndex)
-		};
-	}
+	bool containsAllFamilies() const;
+	std::set<uint32_t> getVectorOfIndecies();
 };
 
 enum Scene
@@ -73,19 +57,25 @@ enum Scene
 	MODEL
 };
 
-struct SceneData {
+struct SceneData 
+{
+	std::string name = "";
+	std::vector<DrawableData> sceneGameObjects = {};
+	Scene sceneType = {};
+	bool selected = false;
 
-	Scene sceneType;
-	std::vector<DrawableData> sceneGameObjects;
-	std::string name;
-	bool selected;
+	//Padding for compiler warning
+	uint8_t padding[3] = {};
 };
 
 struct SwapChainSupportDetails
 {
-	VkSurfaceCapabilitiesKHR capabilities;
 	std::vector<VkSurfaceFormatKHR> formats;
 	std::vector<VkPresentModeKHR> presentModes;
+	VkSurfaceCapabilitiesKHR capabilities;
+
+	//Padding for compiler warning
+	uint8_t padding[4];
 };
 
 class VulkanManager {
@@ -95,18 +85,25 @@ public:
 	bool drawFrame(GLFWwindow* window, float dt, bool* needToReloadGUI_Flag = nullptr);
 	void markFramebuffersResized();
 	void updateGUI();
-	void renderGUI(VkCommandBuffer commandBuffer, int imageIndex);
-	void renderGUI_DynamicRender(VkCommandBuffer commandBuffer, int imageIndex);
+	void renderGUI(VkCommandBuffer commandBuffer);
+	void renderGUI_DynamicRender(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
-	SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
+	SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device) const;
 
-	inline const VkInstance getInstance() { return mInstance; }
-	inline const VkDevice getLogicalDevice() { return mLogicalDevice; }
-	inline const VkPhysicalDevice getPhysicalDevice() { return mPhysicalDevice; }
-	inline const VkFormat* getSwapChainImageFormatRef() { return &mSwapChainImageFormat; }
-	inline const VkFormat getDepthFormat() { return mDepthFormat; }
-	inline const VkSampleCountFlagBits getMSAA_Samples() { return mMSAA_Samples; }
-	inline const VkQueue getGraphicsQueue() { return mGraphicsQueue; }
+	//Inline one liners
+	VkInstance getInstance() const;
+	VkDevice getLogicalDevice() const;
+	VkPhysicalDevice getPhysicalDevice() const;
+	const VkFormat* getSwapChainImageFormatRef() const;
+	VkFormat getDepthFormat() const;
+	VkSampleCountFlagBits getMSAA_Samples() const;
+	VkQueue getGraphicsQueue() const;
+
+	//Explicit class defenitions to avoid compiler warnings
+	VulkanManager();
+	VulkanManager(const VulkanManager&) = default;
+	VulkanManager& operator=(VulkanManager&& other) = delete;
+	VulkanManager& operator=(const VulkanManager& other) = delete;
 private:
 	bool createInstance();
 
@@ -125,7 +122,7 @@ private:
 
 	bool pickPhysicalDevice();
 	bool deviceIsSuitable(VkPhysicalDevice device);
-	QueueFamiliesIndexStore findSuitableQueueFamilies(VkPhysicalDevice device);
+	QueueFamiliesIndexStore findSuitableQueueFamilies(VkPhysicalDevice device) const;
 	bool supportsDeviceExtensions(VkPhysicalDevice device);
 	bool supportsDeviceFeatures(VkPhysicalDevice device);
 
@@ -155,61 +152,102 @@ private:
 
 	bool createSyncObjects();
 
-	void handlePipelineChanges(GLFWwindow* window, bool* needToReloadGUI_Flag);
+	void handlePipelineChanges(bool* needToReloadGUI_Flag);
 
-	VkSampleCountFlagBits getMaxUsableSampleCount();
+	VkSampleCountFlagBits getMaxUsableSampleCount() const;
 
-	VkInstance mInstance;
+	ModelViewProjectionUniformObject mMVP_UniformObject{};
+
+	UniformDescriptorManager mUniformDescriptorManager{};
+
+	Mesh3D mHouseMesh{};
+
+	RenderGraph mActiveRenderGraph{};
+
+	SceneData mSelectedScene{};
+
+	GameObject mHouseGameObject{};
+
+	//Scene data for managing which scenes to render
+	std::vector<SceneData> mScenes{};
+
+	std::vector<GraphicsPipeline> mGraphicsPipelineStorageList{};
+	std::vector<ComputePipeline> mComputePipelineStorageList{};
+
+	//Rendering semaphores and fences
+	std::vector<VkSemaphore> mImageAvailableSemaphores{};
+	std::vector<VkSemaphore> mRenderFinishedSemaphores{};
+	std::vector<VkFence> mWhileRenderingFences{};
+
+	std::vector<VkImage> mSwapChainImages{};
+	std::vector<VkImageView> mSwapChainImageViews{};
+
+	std::vector<VkCommandBuffer> mCommandBuffers{};
+
+	std::vector<const char*> mRequiredDeviceExtension = {
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+		VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+		VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+		VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
+		VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME
+	};
+
+	const std::vector<const char*> mValidationLayers = {
+		"VK_LAYER_KHRONOS_validation"
+	};
+
+	BufferDrawer mParticleDrawer{};
+
+	VkDebugUtilsMessengerEXT mDebugMessanger{};
+
+	VkInstance mInstance = VK_NULL_HANDLE;
 	VkPhysicalDevice mPhysicalDevice = VK_NULL_HANDLE;
-	VkDevice mLogicalDevice;
+	VkDevice mLogicalDevice = VK_NULL_HANDLE;
 
 	//Queue data
-	VkQueue mGraphicsQueue;
-	VkQueue mComputeQueue;
-	VkQueue mPresentQueue;
+	VkQueue mGraphicsQueue = VK_NULL_HANDLE;
+	VkQueue mComputeQueue = VK_NULL_HANDLE;
+	VkQueue mPresentQueue = VK_NULL_HANDLE;
 
-	VkSurfaceKHR mSurface;
-	VkSwapchainKHR mSwapChain;
-	std::vector<VkImage> mSwapChainImages;
-	std::vector<VkImageView> mSwapChainImageViews;
-	VkFormat mSwapChainImageFormat;
-	VkExtent2D mSwapChainImageExtent;
-	VkFormat mDepthFormat;
-
-	std::vector<GraphicsPipeline> mGraphicsPipelineStorageList;
-	std::vector<ComputePipeline> mComputePipelineStorageList;
+	VkSurfaceKHR mSurface = VK_NULL_HANDLE;
+	VkSwapchainKHR mSwapChain = VK_NULL_HANDLE;
+	VkExtent2D mSwapChainImageExtent{};
 
 	//Main depth attachment data
-	VkImage mDepthImage;
-	VkDeviceMemory mDepthMemory;
-	VkImageView mDepthImageView;
+	VkImage mDepthImage = VK_NULL_HANDLE;
+	VkDeviceMemory mDepthMemory = VK_NULL_HANDLE;
+	VkImageView mDepthImageView = VK_NULL_HANDLE;
 
 	//Main color attachment for MSAA
-	VkImage mMSAA_ColorImage;
-	VkDeviceMemory mMSAA_ColorhMemory;
-	VkImageView mMSAA_ColorImageView;
+	VkImage mMSAA_ColorImage = VK_NULL_HANDLE;
+	VkDeviceMemory mMSAA_ColorhMemory = VK_NULL_HANDLE;
+	VkImageView mMSAA_ColorImageView = VK_NULL_HANDLE;
 
-	RenderGraph mActiveRenderGraph;
+	VkCommandPool mCommandPool = VK_NULL_HANDLE;
 
-	Mesh3D mHouseMesh;
-	GameObject mHouseGameObject;
-	BufferDrawer mParticleDrawer;
-	UniformDescriptorManager mUniformDescriptorManager;
+	//Function pointers for additional feature functions
+	void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*) {};
+	void (*fpCmdEndRenderingKHR)(VkCommandBuffer) {};
+	void(*fpCmdPipelineBarrier2)(VkCommandBuffer, const VkDependencyInfo*) {};
 
-	VkCommandPool mCommandPool;
-	std::vector<VkCommandBuffer> mCommandBuffers;
+	//Main texture image data
+	VkImage mTextureImage = VK_NULL_HANDLE;
+	VkImageView mTextureImageView = VK_NULL_HANDLE;
+	VkDeviceMemory mTextureMemory = VK_NULL_HANDLE;
+	VkSampler mTextureSampler = VK_NULL_HANDLE;
 
-	//Graphics semaphores and fences
-	std::vector<VkSemaphore> mImageAvailableSemaphores;
-	std::vector<VkSemaphore> mRenderFinishedSemaphores;
-	std::vector<VkFence> mWhileRenderingFences;
+	VkFormat mSwapChainImageFormat{};
+	VkFormat mDepthFormat{};
 
-
-	const int MAX_FRAMES_IN_FLIGHT = 2;
-	const int PARTICLE_COUNT = 256000;
+	const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
+	const uint32_t PARTICLE_COUNT = 256000;
 
 	uint32_t mCurrentFrame = 0;
 	uint32_t mCurrScene = 0;
+
+	DeltaTimeUniformObject mDtUniformObject{};
+
+	VkSampleCountFlagBits mMSAA_Samples = VK_SAMPLE_COUNT_1_BIT;
 
 	bool mRenderingParticles = true;
 	bool mFramebuffersResized = false;
@@ -218,43 +256,8 @@ private:
 	bool mUsingDynamicRenderingForGUI = true; //For ImGui display, to not imediately switch with the one for logic while still rendering
 	bool mUsingDynamicRendering = true;
 
-	//Scene data for managing which scenes to render
-	std::vector<SceneData> mScenes = {};
-	SceneData mSelectedScene;
-
-	//Function pointers for additional feature functions
-	void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*);
-	void (*fpCmdEndRenderingKHR)(VkCommandBuffer);
-	void(*fpCmdPipelineBarrier2)(VkCommandBuffer, const VkDependencyInfo*);
-
-	//Main texture image data
-	VkImage mTextureImage;
-	VkDeviceMemory mTextureMemory;
-	VkImageView mTextureImageView;
-	VkSampler mTextureSampler;
-
-	VkSampleCountFlagBits mMSAA_Samples = VK_SAMPLE_COUNT_1_BIT;
-
-	VkDebugUtilsMessengerEXT mDebugMessanger;
-
-	DeltaTimeUniformObject mDtUniformObject{};
-	ModelViewProjectionUniformObject mMVP_UniformObject{};
-
-	const std::vector<const char*> mValidationLayers = {
-		"VK_LAYER_KHRONOS_validation"
-	};
-
-	std::vector<const char*> mRequiredDeviceExtension = { 
-		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-		VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
-		VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-		VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
-		VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME
-	};
+	//Padding for compiler warning
+	uint8_t padding[2] = {};
 };
 
-static void framebufferResizeCallback(GLFWwindow* window, int width, int height)
-{
-	VulkanManager* vulkanManagerRef = reinterpret_cast<VulkanManager*>(glfwGetWindowUserPointer(window));
-	vulkanManagerRef->markFramebuffersResized();
-}
+static void framebufferResizeCallback(GLFWwindow* window, int width, int height) noexcept;

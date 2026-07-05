@@ -114,14 +114,14 @@ uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, Vk
 	VkPhysicalDeviceMemoryProperties memoryProperties{};
 	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
 
-	for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
+	for (uint32_t i = 0; (i < memoryProperties.memoryTypeCount == true); i++)
 	{
-		if ((typeFilter && (1 << i)) && (memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
+		if ((typeFilter & (1 << i)) && (memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
 		{
 			return i;
 		}
 	}
 
 	throw std::runtime_error("Failed to find suitable memory type...");
-	return UINT32_MAX;
+	//return UINT32_MAX;
 }

@@ -2,7 +2,7 @@
 
 #include "vulkan/vulkan.h"
 #include "Pipeline.h"
-#include "../Mesh/MeshGeneric.h"
+#include "VulkanRenderer/Mesh/MeshGeneric.h"
 
 #include <iostream>
 #include <fstream>
@@ -11,18 +11,23 @@
 //Struct to pass the main configurable values when creating the pipeline (rather than moving all the create info 
 // structs as parameters). Might need to refactor to have a better way of creating different pipelines
 struct ConfigurablePipelineValues {
-	VkPrimitiveTopology primitiveTopology;
-	VkBool32 depthWriteEnabled;
-	VkSampleCountFlagBits samples;
-
 	VkImageView* targetDepthImageView;
 	VkImage* targetDepthImage;
 	VkImageView* targetMSAA_ImageView;
 	VkImage* targetMSAA_Image;
+
+	VkPrimitiveTopology primitiveTopology;
+	VkBool32 depthWriteEnabled;
+	VkSampleCountFlagBits samples;
+
+	//Padding for compiler warning
+	uint8_t padding[4];
 };
 
 class GraphicsPipeline : public Pipeline {
 public:
+	~GraphicsPipeline() {}
+
 	bool createPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat, 
 		VkFormat depthAttachmentFormat, ConfigurablePipelineValues configValues,
 		const char* vertShaderFilepath, const char* fragShaderFilepath, VertexInputData vertexInputData, 
@@ -39,30 +44,34 @@ public:
 	VkRenderPassBeginInfo getRenderPassBeginInfo(uint32_t framebufferIndex, VkExtent2D renderPassExtent, 
 		std::array<VkClearValue, 2> clearValues);
 
-	inline const VkRenderPass getRenderPass() { return mRenderPass; }
-	inline bool noLoadedFramebuffers() { return mFramebuffers.empty(); }
+	VkRenderPass getRenderPass() const;
+	bool noLoadedFramebuffers() const;
 
-	inline bool dynamicRenderingEnabled() { return mDynamicRenderingEnabled; } 
-	inline void setDynamicRenderingEnabled(bool enabled) { mDynamicRenderingEnabled = enabled; }
+	bool dynamicRenderingEnabled() const;
+	void setDynamicRenderingEnabled(bool enabled);
 
 	void bindPipeline(VkCommandBuffer commandBuffer) override;
 	bool recordPipelineCommands(VkCommandBuffer commandBuffer, const Drawable* drawable, VkImage& swapChainImage, 
 		VkImageView& swapChainImageView, uint32_t currFrame, void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*), void (*fpCmdEndRenderingKHR)(VkCommandBuffer)) override;
 
-	inline void updateRenderExtents(VkExtent2D newExtents) { mRenderExtent = newExtents; }
+	void updateRenderExtents(VkExtent2D newExtents);
 private:
-	VkRenderPass mRenderPass = VK_NULL_HANDLE;
 	std::vector<VkFramebuffer> mFramebuffers;
 
-	VkImageView* mDepthImageView;
-	VkImage* mDepthImage;
+	VkRenderPass mRenderPass = VK_NULL_HANDLE;
 
-	VkImageView* mMSAA_ImageView;
-	VkImage* mMSAA_Image;
+	VkImageView* mDepthImageView = nullptr;
+	VkImage* mDepthImage = nullptr;
 
-	VkExtent2D mRenderExtent;
+	VkImageView* mMSAA_ImageView = nullptr;
+	VkImage* mMSAA_Image = nullptr;
+
+	VkExtent2D mRenderExtent = {};
 
 	VkSampleCountFlagBits mMSAA_PipelineSamples = VK_SAMPLE_COUNT_1_BIT;
 
 	bool mDynamicRenderingEnabled = true;
+
+	//Padding for compiler warning
+	uint8_t padding[3] = {};
 };

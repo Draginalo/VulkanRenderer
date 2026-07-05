@@ -12,9 +12,9 @@
 #include <array>
 #include <chrono>
 
-#include "../Helpers/VertexInputData.h"
+#include "VulkanRenderer/Helpers/VertexInputData.h"
 #include "DescriptorSetData.h"
-#include "../Pipelines/Pipeline.h"
+#include "VulkanRenderer/Pipelines/Pipeline.h"
 
 //Uniform buffer struct for mvp matrecies with explicit alignment specefied to match shader uniform alignment
 // Could also use #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES but does not always catch alignment for nested structs
@@ -30,36 +30,34 @@ struct DeltaTimeUniformObject {
 
 class UniformDescriptorManager {
 public:
-	bool createDescriptorPool(VkDevice logicalDevice, std::vector<Pipeline*> pipelines, int maxFramesInFlight);
+	bool createDescriptorPool(VkDevice logicalDevice, std::vector<Pipeline*> pipelines, uint32_t maxFramesInFlight);
 
 	void createPipelineSpecificDescriptorSets(std::vector<Pipeline*> pipelines, VkDevice logicalDevice,
-		VkPhysicalDevice physicalDevice, int maxFramesInFlight);
+		VkPhysicalDevice physicalDevice, uint32_t maxFramesInFlight);
 
 	void createMaterialSpecificDescriptorSets(std::vector<Material*> materials, VkDevice logicalDevice,
-		VkPhysicalDevice physicalDevice, int maxFramesInFlight);
+		VkPhysicalDevice physicalDevice, uint32_t maxFramesInFlight);
 
-	void updatePipelineSpecificUniformBuffer(Pipeline* pipeline, int currFrame);
-	void bindPipelineSpecificDescriptorSet(VkCommandBuffer commandBuffer, Pipeline* pipeline, int currFrame);
-	void bindMaterialSpecificDescriptorSet(VkCommandBuffer commandBuffer, const Material* material, int currFrame);
+	void updatePipelineSpecificUniformBuffer(Pipeline* pipeline, uint32_t currFrame);
+	void bindPipelineSpecificDescriptorSet(VkCommandBuffer commandBuffer, Pipeline* pipeline, uint32_t currFrame);
+	void bindMaterialSpecificDescriptorSet(VkCommandBuffer commandBuffer, const Material* material, uint32_t currFrame);
 
-	void bindSSBOs(VkCommandBuffer commandBuffer, int currFrame, int numParticles);
-	bool addDataToSSBOs(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, void* pData, 
-		const UniformBufferDescriptor* pDescriptorData);
+	void bindSSBOs(VkCommandBuffer commandBuffer, uint32_t currFrame, uint32_t numParticles);
+	bool addDataToSSBOs(VkDevice logicalDevice, void* pData, const UniformBufferDescriptor* pDescriptorData);
 
 	void cleanup(VkDevice logicalDevice);
 
-	std::vector<VkBuffer>* getPipelineDescriptorSSBO() { return &mPipelineDescriptorSSBOs; }
+	std::vector<VkBuffer>* getPipelineDescriptorSSBO();
 
-	//inline const DescriptorSetData* getPipelineSpecificDescriptorSet(Pipeline* pipeline)
+	//const DescriptorSetData* getPipelineSpecificDescriptorSet(Pipeline* pipeline)
 	//{ return mPipelineSpecificDescriptorSets[pipeline->getPipelineID()]; };
 private:
 	bool createUniformBuffers(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkDeviceSize bufferSize,
+		uint32_t maxFramesInFlight);
 
-		int maxFramesInFlight);
+	bool createSSBOs(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkDeviceSize bufferSize, uint32_t maxFramesInFlight);
 
-	bool createSSBOs(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkDeviceSize bufferSize, int maxFramesInFlight);
-
-	VkDescriptorPool mDescriptorPool;
+	VkDescriptorPool mDescriptorPool = VK_NULL_HANDLE;
 
 	std::vector<VkDescriptorSet> mGlobalDescriptorSets;
 

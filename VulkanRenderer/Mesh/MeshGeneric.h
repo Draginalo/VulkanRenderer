@@ -1,16 +1,18 @@
 #pragma once
 
-#include "glm/glm.hpp"
+#include <glm/glm.hpp>
 #include <vector>
 #include "vulkan/vulkan.h"
 #include <array>
 #include <iostream>
 
-#include "../Helpers/VertexInputData.h"
+#include "VulkanRenderer/Helpers/VertexInputData.h"
 #include "Drawable.h"
 
 class MeshGeneric : public Drawable {
 public:
+	~MeshGeneric() {}
+
 	bool createVertexBuffer(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, 
 		VkQueue submitQueue, const void* vertexData, VkDeviceSize vertexBufferSize, std::vector<uint32_t> indecies, 
 		VertexInputData vertexInputData);
@@ -21,16 +23,16 @@ public:
 	void cleanupBuffers(VkDevice logicalDevice);
 
 	void draw(VkCommandBuffer commandBuffer, uint32_t currFrame) const override;
-	const VkBuffer getLastFrameVertexBuffer() const override;
+	VkBuffer getLastFrameVertexBuffer() const override;
 
-	inline VertexInputData getVertexInputData() { return mVertexInputData; }
+	const VertexInputData getVertexInputData() const;
 protected:
 	std::vector<uint32_t> mIndecies;
 
-	VkBuffer mVertexBuffer;
-	VkBuffer mIndeciesBuffer;
-	VkDeviceMemory mVertexBufferMemory;
-	VkDeviceMemory mIndeciesBufferMemory;
+	VkBuffer mVertexBuffer = VK_NULL_HANDLE;
+	VkBuffer mIndeciesBuffer = VK_NULL_HANDLE;
+	VkDeviceMemory mVertexBufferMemory = VK_NULL_HANDLE;
+	VkDeviceMemory mIndeciesBufferMemory = VK_NULL_HANDLE;
 
-	VertexInputData mVertexInputData;
+	VertexInputData mVertexInputData = {};
 };

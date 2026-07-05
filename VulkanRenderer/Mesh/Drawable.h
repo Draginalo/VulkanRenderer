@@ -4,6 +4,7 @@
 
 class Drawable {
 public:
+	virtual ~Drawable() = default;
 	virtual void draw(VkCommandBuffer commandBuffer, uint32_t currFrame) const = 0;
-	virtual const VkBuffer getLastFrameVertexBuffer() const = 0;
+	virtual VkBuffer getLastFrameVertexBuffer() const = 0;
 };

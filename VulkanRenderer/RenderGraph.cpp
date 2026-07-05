@@ -2,23 +2,23 @@
 
 void RenderGraph::handleAddPipelineToOrderedList(Pipeline* pipelineToAdd)
 {
-	int pipelineCount = mActivePipelines_Ordered.size();
+	size_t pipelineCount = mActivePipelines_Ordered.size();
 	int lastPipelineToDependOn = -1;
 	int lastPipelineThatDependsOn = -1;
 
 	handleRegisterPipelineDependencyData(pipelineToAdd);
 
-	for (int i = 0; i < pipelineCount; i++)
+	for (uint32_t i = 0; i < pipelineCount; i++)
 	{
 		//TODO: Add automatic detection of pipeline dependency here and setting of memory barrier for pipeline here
 		if (pipelineToAdd->getPipelineDependencyInfo()->dependsOnPipeline == mActivePipelines_Ordered[i])
 		{
-			lastPipelineToDependOn = i;
+			lastPipelineToDependOn = static_cast<int>(i);
 		}
 
 		if (mActivePipelines_Ordered[i]->getPipelineDependencyInfo()->dependsOnPipeline == pipelineToAdd)
 		{
-			lastPipelineThatDependsOn = i;
+			lastPipelineThatDependsOn = static_cast<int>(i);
 		}
 	}
 
@@ -154,3 +154,8 @@ void RenderGraph::handleRegisterPipelineDependencyData(Pipeline* pipeline)
 		}
 	}
 }
+
+//Inline one liners
+std::vector<Pipeline*>* RenderGraph::getOrderedActivePipelines() { return &mActivePipelines_Ordered; }
+std::unordered_map<Pipeline*, std::unordered_map<const Material*, std::vector<const Drawable*>>>& RenderGraph::getRenderTree()
+{ return mRenderTree; }

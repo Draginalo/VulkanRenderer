@@ -22,9 +22,9 @@ public:
 	void handleRegisterDrawableDependencyData(DrawableData drawableData);
 	void handleRegisterPipelineDependencyData(Pipeline* pipeline);
 
-	inline std::vector<Pipeline*>* getOrderedActivePipelines() { return &mActivePipelines_Ordered; }
-	inline std::unordered_map<Pipeline*, std::unordered_map<const Material*, std::vector<const Drawable*>>>& 
-		getRenderTree() { return mRenderTree; }
+	std::vector<Pipeline*>* getOrderedActivePipelines();
+	std::unordered_map<Pipeline*, std::unordered_map<const Material*, std::vector<const Drawable*>>>&
+		getRenderTree();
 private:
 	std::vector<Pipeline*> mActivePipelines_Ordered;
 	std::unordered_map<Pipeline*, std::unordered_map<const Material*, std::vector<const Drawable*>>> mRenderTree;

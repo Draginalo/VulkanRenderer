@@ -9,19 +9,18 @@ public:
 	UniformBufferDescriptor(DescriptorLevel descriptorLevel = GLOBAL, uint32_t dstBinding = 0, 
 		VkShaderStageFlagBits stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
 		VkDescriptorType uniformType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, uint32_t dataSize = 0, void* dataPointer = nullptr, 
-		bool sourceFromPastFrame = false) : UniformDescriptor(descriptorLevel, dstBinding, stageFlags, uniformType), 
-		mBufferInfo({nullptr, 0, dataSize}), mDataPointer(dataPointer), mSourceFromPastFrame(sourceFromPastFrame) {};
+		bool sourceFromPastFrame = false);
 
-	inline void setBufferInfo(VkDescriptorBufferInfo bufferInfo) { mBufferInfo = bufferInfo; }
-	inline void setDataPointer(void* pData) { mDataPointer = pData; }
-	inline const void* getDataPointer() const { return mDataPointer; }
-	inline void setSourceFromPastFrame(bool sourceFromPastFrame) { mSourceFromPastFrame = sourceFromPastFrame; }
-	inline const bool getSourceFromPastFrame() const { return mSourceFromPastFrame; }
-	inline const VkDeviceSize getDataSize() const { return mBufferInfo.range; }
-	inline const VkDeviceSize getOffset() const { return mBufferInfo.offset; }
-	inline const VkBuffer getCurrBuffer() const { return mBufferInfo.buffer; }
+	void setBufferInfo(VkDescriptorBufferInfo bufferInfo);
+	void setDataPointer(void* pData);
+	const void* getDataPointer() const;
+	void setSourceFromPastFrame(bool sourceFromPastFrame);
+	bool getSourceFromPastFrame() const;
+	VkDeviceSize getDataSize() const;
+	VkDeviceSize getOffset() const;
+	VkBuffer getCurrBuffer() const;
 
-	inline VkDescriptorSetLayoutBinding getDescriptorSetLayoutBinding() override {
+	VkDescriptorSetLayoutBinding getDescriptorSetLayoutBinding() override {
 		VkDescriptorSetLayoutBinding layout{};
 		layout.binding = mDstBinding;
 		layout.descriptorCount = 1;
@@ -32,7 +31,7 @@ public:
 		return layout;
 	}
 
-	inline VkWriteDescriptorSet getWriteDescriptorSet(VkDescriptorSet destSet) override {
+	VkWriteDescriptorSet getWriteDescriptorSet(VkDescriptorSet destSet) override {
 		VkWriteDescriptorSet descriptorWrite{};
 		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrite.dstSet = destSet;
@@ -47,6 +46,9 @@ public:
 private:
 	VkDescriptorBufferInfo mBufferInfo;
 
-	bool mSourceFromPastFrame = false;
 	void* mDataPointer = nullptr;
+	bool mSourceFromPastFrame = false;
+
+	//Padding for compiler warning
+	uint8_t padding[7] = {};
 };

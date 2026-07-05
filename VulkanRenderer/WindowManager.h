@@ -16,7 +16,7 @@ public:
 
 	bool shouldCloseWindow();
 
-	inline GLFWwindow* getWindowRef() { return window; };
+	GLFWwindow* getWindowRef();
 private:
-	GLFWwindow* window;
+	GLFWwindow* mpWindow;
 };

@@ -8,8 +8,11 @@
 
 //Helper struct to bundle the vertex input data
 struct VertexInputData {
-	VkVertexInputBindingDescription vertexInputBinding;
 	std::vector<VkVertexInputAttributeDescription> vertexInputAttributes;
+	VkVertexInputBindingDescription vertexInputBinding;
+
+	//Padding for compiler warning
+	uint8_t padding[4] = {};
 };
 
 //Empty struct to allow for polymophism when passing vertex data to a mesh. 
@@ -24,94 +27,23 @@ struct Vertex3D {
 	glm::vec3 color;
 	glm::vec2 texCoords;
 
-	static VertexInputData getVertexInputData()
-	{
-		VkVertexInputBindingDescription bindingDescription{};
-		bindingDescription.binding = 0;
-		bindingDescription.stride = sizeof(Vertex3D);
-		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	static VertexInputData getVertexInputData();
 
-		std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-		VkVertexInputAttributeDescription description{};
-
-		description.binding = 0;
-		description.location = 0;
-		description.format = VK_FORMAT_R32G32B32_SFLOAT;
-		description.offset = offsetof(Vertex3D, position);
-
-		attributeDescriptions.push_back(description);
-
-		description.binding = 0;
-		description.location = 1;
-		description.format = VK_FORMAT_R32G32B32_SFLOAT;
-		description.offset = offsetof(Vertex3D, color);
-
-		attributeDescriptions.push_back(description);
-
-		description.binding = 0;
-		description.location = 2;
-		description.format = VK_FORMAT_R32G32_SFLOAT;
-		description.offset = offsetof(Vertex3D, texCoords);
-
-		attributeDescriptions.push_back(description);
-
-		VertexInputData vertexInputData{};
-		vertexInputData.vertexInputBinding = bindingDescription;
-		vertexInputData.vertexInputAttributes = attributeDescriptions;
-
-		return vertexInputData;
-	}
-
-	bool operator==(const Vertex3D& other) const
-	{
-		return position == other.position && color == other.color && texCoords == other.texCoords;
-	}
+	bool operator==(const Vertex3D& other) const;
 };
 
-namespace std {
-	template<> struct hash<Vertex3D> {
-		size_t operator()(Vertex3D const& vertex) const {
-			return ((hash<glm::vec3>()(vertex.position) ^
-				(hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
-				(hash<glm::vec2>()(vertex.texCoords) << 1);
-		}
-	};
-}
+template<> struct std::hash<Vertex3D> {
+	std::size_t operator()(const Vertex3D& vertex) const;
+};
 
 //Uniform object data (with corrected alignment) for particle 2D to be passed to shaders (in SSBOs)
 struct Particle2D {
-	glm::vec2 position;
-	glm::vec2 velocity;
-	alignas(16) glm::vec3 color; //Need to correct for alignment when passing to shaders
+	glm::vec2 position = {};
+	glm::vec2 velocity = {};
+	glm::vec3 color = {}; //Need to correct for alignment when passing to shaders
 
-	static VertexInputData getParticleInputData()
-	{
-		VkVertexInputBindingDescription bindingDescription{};
-		bindingDescription.binding = 0;
-		bindingDescription.stride = sizeof(Particle2D);
-		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	//Padding for compiler warning
+	uint8_t padding[4] = {};
 
-		std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-
-		VkVertexInputAttributeDescription description{};
-		description.binding = 0;
-		description.location = 0;
-		description.format = VK_FORMAT_R32G32_SFLOAT;
-		description.offset = offsetof(Particle2D, position);
-
-		attributeDescriptions.push_back(description);
-
-		description.binding = 0;
-		description.location = 1;
-		description.format = VK_FORMAT_R32G32B32_SFLOAT;
-		description.offset = offsetof(Particle2D, color);
-
-		attributeDescriptions.push_back(description);
-
-		VertexInputData vertexInputData{};
-		vertexInputData.vertexInputBinding = bindingDescription;
-		vertexInputData.vertexInputAttributes = attributeDescriptions;
-
-		return vertexInputData;
-	}
+	static VertexInputData getParticleInputData();
 };

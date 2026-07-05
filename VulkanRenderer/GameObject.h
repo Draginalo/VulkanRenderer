@@ -8,8 +8,8 @@
 #include "UniformDescriptorHandlers/UniformDescriptorManager.h"
 
 struct Transform {
-	glm::vec3 position;
-	glm::vec3 rotation;
+	glm::vec3 position = { 0.0, 0.0, 0.0 };
+	glm::vec3 rotation = { 0.0, 0.0, 0.0 };
 	glm::vec3 scale = {1.0, 1.0, 1.0};
 };
 
@@ -18,16 +18,20 @@ struct Transform {
 // a mesh pointer for the mesh to draw
 class GameObject {
 public:
-	GameObject() {}
-	GameObject(const Material* pMaterial, const Mesh3D* pMeshToRender) : mpMaterial(pMaterial), mpMeshToRender(pMeshToRender) {}
+	GameObject();
+	GameObject(const Material* pMaterial, const Mesh3D* pMeshToRender);
 
-	const Material* getMaterial() const { return mpMaterial; }
-	const Mesh3D* getMesh() const { return mpMeshToRender; }
+	const Material* getMaterial() const;
+	const Mesh3D* getMesh() const;
 
 private:
-	const Material* mpMaterial;
-	const Mesh3D* mpMeshToRender;
+	//UniformDescriptorManager mUniformDescriptorManager;
+
+	const Material* mpMaterial = nullptr;
+	const Mesh3D* mpMeshToRender = nullptr;
 
 	Transform mTranform;
-	UniformDescriptorManager mUniformDescriptorManager;
+
+	//Padding for compiler warning
+	uint8_t padding[4] = {0,0,0,0};
 };

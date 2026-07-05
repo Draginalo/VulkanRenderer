@@ -1,6 +1,6 @@
 #include "GraphicsPipeline.h"
-#include "../UniformDescriptorHandlers/UniformDescriptorManager.h"
-#include "../Helpers/TextureImageHelpers.h"
+#include "VulkanRenderer/UniformDescriptorHandlers/UniformDescriptorManager.h"
+#include "VulkanRenderer/Helpers/TextureImageHelpers.h"
 
 bool GraphicsPipeline::createPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat,
 	VkFormat depthAttachmentFormat, ConfigurablePipelineValues configValues,
@@ -306,11 +306,11 @@ void GraphicsPipeline::cleanupPipeline(VkDevice logicalDevice)
 bool GraphicsPipeline::createFramebuffers(VkDevice logicalDevice, std::vector<VkImageView> imageViews, VkImageView depthImageView,
 	VkImageView msaaImageView, VkExtent2D extent)
 {
-	int imageViewCount = imageViews.size();
+	size_t imageViewCount = imageViews.size();
 
 	mFramebuffers.resize(imageViewCount);
 
-	for (int i = 0; i < imageViewCount; i++)
+	for (uint32_t i = 0; i < imageViewCount; i++)
 	{
 		std::array<VkImageView, 3> attatchments = { msaaImageView, depthImageView, imageViews[i] };
 
@@ -372,7 +372,8 @@ void GraphicsPipeline::bindPipeline(VkCommandBuffer commandBuffer)
 }
 
 bool GraphicsPipeline::recordPipelineCommands(VkCommandBuffer commandBuffer, const Drawable* drawable, VkImage& swapChainImage,
-	VkImageView& swapChainImageView, uint32_t currFrame, void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*), void (*fpCmdEndRenderingKHR)(VkCommandBuffer))
+	VkImageView& swapChainImageView, uint32_t currFrame, void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*), 
+	void (*fpCmdEndRenderingKHR)(VkCommandBuffer))
 {
 	//Transitions swap chain correct formats, accesses, and stages for rendering (as resolve attachment for msaa)
 	transitionImageLayout(commandBuffer, swapChainImage, VK_IMAGE_LAYOUT_UNDEFINED,
@@ -393,7 +394,7 @@ bool GraphicsPipeline::recordPipelineCommands(VkCommandBuffer commandBuffer, con
 		VK_IMAGE_ASPECT_DEPTH_BIT, 1, nullptr);
 
 	VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
-	VkClearValue clearDepth = { 1.0f, 0 };
+	VkClearValue clearDepth = { { 1.0f, 0 } };
 	VkRenderingAttachmentInfoKHR colorAttachmentInfo{};
 	colorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
 	colorAttachmentInfo.clearValue = clearColor;
@@ -455,3 +456,10 @@ bool GraphicsPipeline::recordPipelineCommands(VkCommandBuffer commandBuffer, con
 
 	return true;
 }
+
+//Inline one liners
+void GraphicsPipeline::setDynamicRenderingEnabled(bool enabled) { mDynamicRenderingEnabled = enabled; }
+bool GraphicsPipeline::dynamicRenderingEnabled() const { return mDynamicRenderingEnabled; }
+VkRenderPass GraphicsPipeline::getRenderPass() const { return mRenderPass; }
+bool GraphicsPipeline::noLoadedFramebuffers() const { return mFramebuffers.empty(); }
+void GraphicsPipeline::updateRenderExtents(VkExtent2D newExtents) { mRenderExtent = newExtents; }

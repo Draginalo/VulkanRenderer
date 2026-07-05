@@ -1,6 +1,6 @@
 #include "MeshGeneric.h"
-#include "../Helpers/BufferHelpers.h"
-#include "../Helpers/ModelHelpers.h"
+#include "VulkanRenderer/Helpers/BufferHelpers.h"
+#include "VulkanRenderer/Helpers/ModelHelpers.h"
 
 bool MeshGeneric::createVertexBuffer(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkCommandPool commandPool,
 	VkQueue submitQueue, const void* vertexData, VkDeviceSize vertexBufferSize, std::vector<uint32_t> indecies, 
@@ -88,6 +88,8 @@ void MeshGeneric::cleanupBuffers(VkDevice logicalDevice)
 
 void MeshGeneric::draw(VkCommandBuffer commandBuffer, uint32_t currFrame) const
 {
+	(void)currFrame;
+
 	VkDeviceSize offsets[] = { 0 };
 
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &mVertexBuffer, offsets);
@@ -96,7 +98,9 @@ void MeshGeneric::draw(VkCommandBuffer commandBuffer, uint32_t currFrame) const
 	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(mIndecies.size()), 1, 0, 0, 0);
 }
 
-const VkBuffer MeshGeneric::getLastFrameVertexBuffer() const
+VkBuffer MeshGeneric::getLastFrameVertexBuffer() const
 {
 	return mVertexBuffer;
 }
+
+const VertexInputData MeshGeneric::getVertexInputData() const { return mVertexInputData; }

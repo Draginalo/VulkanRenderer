@@ -100,3 +100,5 @@ void GUIHandler::cleanupGUI(VkDevice logicalDevice)
 
 	vkDestroyDescriptorPool(logicalDevice, mImGuiDescriptorPool, nullptr);
 }
+
+bool* GUIHandler::getReloadGUI_Flag() { return &mNeedToReloadGUI; }

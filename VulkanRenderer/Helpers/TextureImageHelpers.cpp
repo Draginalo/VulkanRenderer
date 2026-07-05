@@ -13,7 +13,7 @@ bool createTextureImage(VkDevice logicalDevice, VkPhysicalDevice physicalDevice,
 	stbi_uc* pixels = stbi_load(imageFilename, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 
 	//Multiplied by 4 because of the 4 data channels (RGBA)
-	VkDeviceSize imageSize = texWidth * texHeight * 4;
+	VkDeviceSize imageSize = static_cast<VkDeviceSize>(texWidth * texHeight * 4);
 
 	if (!pixels)
 	{
@@ -40,8 +40,9 @@ bool createTextureImage(VkDevice logicalDevice, VkPhysicalDevice physicalDevice,
 	mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight))) + 1);
 	VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB;
 
-	if (!createImage(logicalDevice, physicalDevice, texWidth, texHeight, mipLevels, VK_SAMPLE_COUNT_1_BIT, imageFormat, 
-		VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
+	if (!createImage(logicalDevice, physicalDevice, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), mipLevels, 
+		VK_SAMPLE_COUNT_1_BIT, imageFormat, VK_IMAGE_TILING_OPTIMAL, 
+		VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory)) 
 	{
 		std::cout << "\nFailed to create texture image..." << std::endl;
@@ -55,7 +56,7 @@ bool createTextureImage(VkDevice logicalDevice, VkPhysicalDevice physicalDevice,
 		VK_ACCESS_2_NONE, VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
 		VK_IMAGE_ASPECT_COLOR_BIT, mipLevels, nullptr);
 
-	copyBufferToImage(logicalDevice, stageBuffer, textureImage, texWidth, texHeight, mipLevels, commandBuffer);
+	copyBufferToImage(stageBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), 0, commandBuffer);
 
 	generateMipMaps(commandBuffer, textureImage, imageFormat, texWidth, texHeight, mipLevels, physicalDevice);
 
@@ -94,7 +95,7 @@ void generateMipMaps(VkCommandBuffer commandBuffer, VkImage image, VkFormat imag
 	int32_t mipWidth = texWidth;
 	int32_t mipHeight = texHeight;
 
-	for (int i = 1; i < mipLevels; i++)
+	for (uint32_t i = 1; i < mipLevels; i++)
 	{
 		imageMemoryBarrierInfo.subresourceRange.baseMipLevel = i - 1;
 		imageMemoryBarrierInfo.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -179,7 +180,7 @@ bool createImage(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, uint32
 	VkMemoryAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.allocationSize = memRequirments.size;
-	allocInfo.memoryTypeIndex = findMemoryType(physicalDevice, memRequirments.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	allocInfo.memoryTypeIndex = findMemoryType(physicalDevice, memRequirments.memoryTypeBits, properties);
 
 	if (vkAllocateMemory(logicalDevice, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS)
 	{
@@ -242,16 +243,17 @@ void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkImage
 	imageMemoryBarrierInfo.image = image;
 	imageMemoryBarrierInfo.oldLayout = oldLayout;
 	imageMemoryBarrierInfo.newLayout = newLayout;
-	imageMemoryBarrierInfo.srcAccessMask = srcAccessMask;
-	imageMemoryBarrierInfo.dstAccessMask = dstAccessMask;
+	imageMemoryBarrierInfo.srcAccessMask = static_cast<VkAccessFlags>(srcAccessMask);
+	imageMemoryBarrierInfo.dstAccessMask = static_cast<VkAccessFlags>(dstAccessMask);
 	imageMemoryBarrierInfo.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	imageMemoryBarrierInfo.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	imageMemoryBarrierInfo.subresourceRange = subResourceRange;
 
-	vkCmdPipelineBarrier(commandBuffer, srcStageMask, dstStageMask, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrierInfo);
+	vkCmdPipelineBarrier(commandBuffer, static_cast<VkPipelineStageFlags>(srcStageMask), static_cast<VkPipelineStageFlags>(dstStageMask), 0, 0, nullptr, 0, nullptr, 1,
+		&imageMemoryBarrierInfo);
 }
 
-void copyBufferToImage(VkDevice logicalDevice, VkBuffer srcBuffer, VkImage dstImage, uint32_t width, uint32_t height, 
+void copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage, uint32_t width, uint32_t height, 
 	uint32_t mipLevels, VkCommandBuffer commandBuffer)
 {
 	VkBufferImageCopy imageRegion{};
@@ -259,7 +261,7 @@ void copyBufferToImage(VkDevice logicalDevice, VkBuffer srcBuffer, VkImage dstIm
 	imageRegion.bufferRowLength = 0;
 	imageRegion.bufferImageHeight = 0;
 	imageRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	imageRegion.imageSubresource.mipLevel = 0;
+	imageRegion.imageSubresource.mipLevel = mipLevels;
 	imageRegion.imageSubresource.baseArrayLayer = 0;
 	imageRegion.imageSubresource.layerCount = 1;
 	imageRegion.imageOffset = { 0, 0, 0 };

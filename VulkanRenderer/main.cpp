@@ -22,7 +22,7 @@ int main() {
 
         guiHandler.checkGUI_State(windowManager.getWindowRef(), &vulkanManager);
 
-        currTime = glfwGetTime();
+        currTime = static_cast<float>(glfwGetTime());
         dt = (currTime - prevTime) * 1000.0f;
         prevTime = currTime;
     }

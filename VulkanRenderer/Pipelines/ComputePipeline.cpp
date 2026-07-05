@@ -1,5 +1,7 @@
 #include "ComputePipeline.h"
 
+ComputePipeline::ComputePipeline() : Pipeline(true) {}
+
 bool ComputePipeline::creatPipeline(VkDevice logicalDevice, glm::uvec3 groupCount, glm::uvec3 groupCountDivisor)
 {
 	if (*mPipelineDescriptorSetData.getDescriptorSetLayout() == VK_NULL_HANDLE) 
@@ -18,7 +20,8 @@ bool ComputePipeline::creatPipeline(VkDevice logicalDevice, glm::uvec3 groupCoun
 		return false;
 	}
 
-	auto computeShaderCode = readShaderFile("../Assets/Shaders/ByteEncoded/ComputeParticles_CS.spv");
+	//TODO: Allow for passing of compute shaders to assign to pipeline like graphics pipelines
+	auto computeShaderCode = readShaderFile("../../../../Assets/Shaders/ByteEncoded/ComputeParticles_CS.spv");
 
 	VkShaderModule computeShaderModule = createShaderModule(logicalDevice, computeShaderCode);
 
@@ -53,8 +56,16 @@ void ComputePipeline::bindPipeline(VkCommandBuffer commandBuffer)
 }
 
 bool ComputePipeline::recordPipelineCommands(VkCommandBuffer commandBuffer, const Drawable* drawable, VkImage& swapChainImage, 
-	VkImageView& swapChainImageView, uint32_t currFrame, void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*), void (*fpCmdEndRenderingKHR)(VkCommandBuffer))
+	VkImageView& swapChainImageView, uint32_t currFrame, void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*), 
+	void (*fpCmdEndRenderingKHR)(VkCommandBuffer))
 {
+	(void)drawable;
+	(void)swapChainImage;
+	(void)swapChainImageView;
+	(void)currFrame;
+	(void)fpCmdBeginRenderingKHR;
+	(void)fpCmdEndRenderingKHR;
+
 	vkCmdDispatch(commandBuffer, 
 		mGroupCount.x / mGroupCountDivisor.x, 
 		mGroupCount.y / mGroupCountDivisor.y, 

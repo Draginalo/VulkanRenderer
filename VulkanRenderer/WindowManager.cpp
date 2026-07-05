@@ -7,7 +7,7 @@ bool WindowManager::initWindow()
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
-	window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan Renderer", nullptr, nullptr);
+	mpWindow = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan Renderer", nullptr, nullptr);
 
 	std::cout << "Window succesfully created" << std::endl;
 
@@ -16,7 +16,7 @@ bool WindowManager::initWindow()
 
 bool WindowManager::cleanup()
 {
-	glfwDestroyWindow(window);
+	glfwDestroyWindow(mpWindow);
 
 	glfwTerminate();
 
@@ -32,5 +32,10 @@ void WindowManager::pollWindowEvents()
 
 bool WindowManager::shouldCloseWindow()
 {
-	return glfwWindowShouldClose(window);
+	return static_cast<bool>(glfwWindowShouldClose(mpWindow));
+}
+
+GLFWwindow* WindowManager::getWindowRef()
+{
+	return mpWindow;
 }

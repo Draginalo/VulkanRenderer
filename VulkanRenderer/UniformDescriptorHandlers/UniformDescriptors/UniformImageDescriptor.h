@@ -2,18 +2,18 @@
 
 #include "UniformDescriptor.h"
 #include <iostream>
-#
 
 class UniformImageDescriptor : public UniformDescriptor {
 public:
 	UniformImageDescriptor(DescriptorLevel descriptorLevel = GLOBAL, uint32_t dstBinding = 0, 
 		VkShaderStageFlagBits stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-		VkDescriptorType uniformType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VkDescriptorImageInfo imageInfo = {}) : 
-		UniformDescriptor(descriptorLevel, dstBinding, stageFlags, uniformType), mImageInfo(imageInfo) {};
+		VkDescriptorType uniformType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VkDescriptorImageInfo imageInfo = {});
 
-	inline void setImageInfo(VkDescriptorImageInfo imageInfo) { mImageInfo = imageInfo; }
+	~UniformImageDescriptor() {}
 
-	inline VkDescriptorSetLayoutBinding getDescriptorSetLayoutBinding() override {
+	void setImageInfo(VkDescriptorImageInfo imageInfo);
+
+	VkDescriptorSetLayoutBinding getDescriptorSetLayoutBinding() override {
 		VkDescriptorSetLayoutBinding layout{};
 		layout.binding = mDstBinding;
 		layout.descriptorCount = 1;
@@ -24,7 +24,7 @@ public:
 		return layout;
 	}
 
-	inline VkWriteDescriptorSet getWriteDescriptorSet(VkDescriptorSet targetSet) override {
+	VkWriteDescriptorSet getWriteDescriptorSet(VkDescriptorSet targetSet) override {
 		VkWriteDescriptorSet descriptorWrite{};
 		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrite.dstSet = targetSet;

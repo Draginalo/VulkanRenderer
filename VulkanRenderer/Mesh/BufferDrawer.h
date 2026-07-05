@@ -8,13 +8,16 @@ struct BufferDrawerData {
 	std::vector<VkBuffer>* framesInFlightBuffers;
 	VkDeviceSize offset;
 	uint32_t numVertices;
+
+	//Padding for compiler warning
+	uint8_t padding[4];
 };
 
 class BufferDrawer : public Drawable {
 public:
 	void draw(VkCommandBuffer commandBuffer, uint32_t currFrame) const override;
-    const VkBuffer getLastFrameVertexBuffer() const override;
-	void setBufferDrawData(BufferDrawerData bufferData) { mBufferDrawData = bufferData; }
+    VkBuffer getLastFrameVertexBuffer() const override;
+	void setBufferDrawData(BufferDrawerData bufferData);
 private:
-	BufferDrawerData mBufferDrawData;
+	BufferDrawerData mBufferDrawData = {};
 };

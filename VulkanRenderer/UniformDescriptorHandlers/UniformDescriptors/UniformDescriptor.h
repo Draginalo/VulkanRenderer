@@ -14,25 +14,27 @@ class UniformDescriptor {
 public:
 	UniformDescriptor(DescriptorLevel descriptorLevel, uint32_t dstBinding = 0, 
 		VkShaderStageFlagBits stageFlags = VK_SHADER_STAGE_VERTEX_BIT, 
-		VkDescriptorType uniformType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) : mDescriptorLevel(descriptorLevel), mDstBinding(dstBinding),
-		mStageFlags(stageFlags), mUniformType(uniformType) {};
+		VkDescriptorType uniformType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+	//Explicit class defenitions to avoid compiler warnings
+	UniformDescriptor(const UniformDescriptor&) = default;
+	UniformDescriptor& operator=(const UniformDescriptor& other) = default;
+
+	virtual ~UniformDescriptor() = default;
 
 	virtual inline VkDescriptorSetLayoutBinding getDescriptorSetLayoutBinding() = 0;
 
 	virtual inline VkWriteDescriptorSet getWriteDescriptorSet(VkDescriptorSet destSet) = 0;
 
-	virtual inline void setDstBinding(uint32_t binding) { mDstBinding = binding; }
-	virtual inline uint32_t getDstBinding() { return mDstBinding; }
-	virtual inline void setStageFlags(VkShaderStageFlagBits stageFlags) { mStageFlags = stageFlags; }
-	virtual inline VkShaderStageFlagBits getStageFlags() { return mStageFlags; }
-	virtual inline void setUniformType(VkDescriptorType uniformType) { mUniformType = uniformType; }
-	virtual inline const VkDescriptorType getUniformType() const { return mUniformType; }
-	virtual inline const DescriptorLevel getDescriptorLevel() const { return mDescriptorLevel; }
+	virtual inline void setDstBinding(uint32_t binding);
+	virtual inline uint32_t getDstBinding() const;
+	virtual inline void setStageFlags(VkShaderStageFlagBits stageFlags);
+	virtual inline VkShaderStageFlagBits getStageFlags() const;
+	virtual inline void setUniformType(VkDescriptorType uniformType);
+	virtual inline VkDescriptorType getUniformType() const;
+	virtual inline DescriptorLevel getDescriptorLevel() const;
 
-	bool operator==(const UniformDescriptor& other) 
-	{
-		return other.mDstBinding == mDstBinding && other.mStageFlags == mStageFlags && other.mUniformType == mUniformType;
-	}
+	bool operator==(const UniformDescriptor& other);
 protected:
 	uint32_t mDstBinding;
 	VkShaderStageFlagBits mStageFlags;

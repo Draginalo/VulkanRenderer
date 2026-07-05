@@ -5,6 +5,8 @@
 
 #include <random>
 
+VulkanManager::VulkanManager() {}
+
 bool VulkanManager::initVulkan(GLFWwindow* window)
 {
 	std::cout << "\nInitializing Vulkan" << std::endl;
@@ -34,9 +36,9 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 
 	//Loads texture for model (TODO: Combine this with model loading in a dedicated model loader to save the texture and model in a 
 	// storage list somewhere lfor assigning pointers to those assets)
-	uint32_t texMipLevels;
+	uint32_t texMipLevels = 0;
 	createTextureImage(mLogicalDevice, mPhysicalDevice, mTextureImage, mTextureMemory, mCommandPool, mGraphicsQueue,
-		"../Assets/Models/Room/room.png", texMipLevels);
+		"../../../../Assets/Models/Room/room.png", texMipLevels);
 
 	if (!createImageView(mLogicalDevice, mTextureImage, &mTextureImageView, VK_FORMAT_R8G8B8A8_SRGB,
 		VK_IMAGE_ASPECT_COLOR_BIT, texMipLevels) != VK_SUCCESS)
@@ -49,7 +51,7 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	createTextureSampler(mLogicalDevice, mPhysicalDevice, &mTextureSampler);
 
 	//Creates the house mesh
-	mHouseMesh.createVertexDataFromModel(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue, "../Assets/Models/Room/room.obj");
+	mHouseMesh.createVertexDataFromModel(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue, "../../../..//Assets/Models/Room/room.obj");
 
 	////Manual defining of the uniform descriptors for the pipelines to be used
 
@@ -103,29 +105,29 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	mGraphicsPipelineStorageList.push_back({});
 	GraphicsPipeline* scene1GraphicsPipeline = &mGraphicsPipelineStorageList[mGraphicsPipelineStorageList.size() - 1];
 
-	scene1GraphicsPipeline->loadPipelineDescriptorSetData(scene1BuffDescriptors, {}, MAX_FRAMES_IN_FLIGHT);
-	scene1GraphicsPipeline->loadBaseMaterialDescriptorSetData({}, scene1Material_ImgDescriptors, MAX_FRAMES_IN_FLIGHT);
+	scene1GraphicsPipeline->loadPipelineDescriptorSetData(scene1BuffDescriptors, {});
+	scene1GraphicsPipeline->loadBaseMaterialDescriptorSetData({}, scene1Material_ImgDescriptors);
 
 	//Creates scene 2 graphics pipeline and saves it as a pointer to load and create it's data
 	mGraphicsPipelineStorageList.push_back({});
 	GraphicsPipeline* scene1GraphicsPipeline2 = &mGraphicsPipelineStorageList[mGraphicsPipelineStorageList.size() - 1];
 
-	scene1GraphicsPipeline2->loadPipelineDescriptorSetData({}, {}, MAX_FRAMES_IN_FLIGHT);
-	scene1GraphicsPipeline2->loadBaseMaterialDescriptorSetData({}, {}, MAX_FRAMES_IN_FLIGHT);
+	scene1GraphicsPipeline2->loadPipelineDescriptorSetData({}, {});
+	scene1GraphicsPipeline2->loadBaseMaterialDescriptorSetData({}, {});
 
 	//Creates scene 1 compute pipeline and saves it as a pointer to load and create it's data
 	mComputePipelineStorageList.push_back({});
 	ComputePipeline* scene2ComputePipeline = &mComputePipelineStorageList[mComputePipelineStorageList.size() - 1];
-	scene2ComputePipeline->loadPipelineDescriptorSetData(scene2BuffComputeDescriptors, {}, MAX_FRAMES_IN_FLIGHT);
+	scene2ComputePipeline->loadPipelineDescriptorSetData(scene2BuffComputeDescriptors, {});
 
 	//Adds all the created scenes to a vector of all the scenes to be created
 	std::vector<Pipeline*> allPipelines;
-	for (int i = 0; i < mGraphicsPipelineStorageList.size(); i++)
+	for (uint32_t i = 0; i < mGraphicsPipelineStorageList.size(); i++)
 	{
 		allPipelines.push_back(&mGraphicsPipelineStorageList[i]);
 	}
 
-	for (int i = 0; i < mComputePipelineStorageList.size(); i++)
+	for (uint32_t i = 0; i < mComputePipelineStorageList.size(); i++)
 	{
 		allPipelines.push_back(&mComputePipelineStorageList[i]);
 	}
@@ -147,8 +149,8 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	configValues.targetMSAA_Image = &mMSAA_ColorImage;
 	configValues.targetMSAA_ImageView = &mMSAA_ColorImageView;
 
-	char* vertShader = "../Assets/Shaders/ByteEncoded/RenderModel_VS.spv";
-	char* fragShader = "../Assets/Shaders/ByteEncoded/RenderModel_FS.spv";
+	char* vertShader = "../../../..//Assets/Shaders/ByteEncoded/RenderModel_VS.spv";
+	char* fragShader = "../../../..//Assets/Shaders/ByteEncoded/RenderModel_FS.spv";
 
 	VertexInputData vertexInputInfo = mHouseMesh.getVertexInputData();
 
@@ -165,8 +167,8 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	configValues.targetMSAA_Image = &mMSAA_ColorImage;
 	configValues.targetMSAA_ImageView = &mMSAA_ColorImageView;
 
-	vertShader = "../Assets/Shaders/ByteEncoded/RenderParticles_VS.spv";
-	fragShader = "../Assets/Shaders/ByteEncoded/RenderParticles_FS.spv";
+	vertShader = "../../../..//Assets/Shaders/ByteEncoded/RenderParticles_VS.spv";
+	fragShader = "../../../..//Assets/Shaders/ByteEncoded/RenderParticles_FS.spv";
 
 	vertexInputInfo = Particle2D::getParticleInputData();
 
@@ -207,8 +209,8 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 		{ &mParticleDrawer, &mGraphicsPipelineStorageList[1], mGraphicsPipelineStorageList[1].getBaseMaterial()},
 	};
 
-	mScenes.push_back({ MODEL, scene1DrawablesData, "Render Model", true });
-	mScenes.push_back({ PARTICLES, scene2DrawablesData, "Render Particles", false });
+	mScenes.push_back({ "Render Model",scene1DrawablesData,  MODEL, true });
+	mScenes.push_back({ "Render Particles", scene2DrawablesData, PARTICLES, false });
 
 	//Loads current scene by building the render graph tree with that scene's drawables
 	mSelectedScene = mScenes[mCurrScene];
@@ -221,18 +223,18 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	std::default_random_engine rngEngine((unsigned)time(nullptr));
 	std::uniform_real_distribution<float> rngRange(0.0f, 1.0f);
 
-	for (int i = 0; i < PARTICLE_COUNT; i++)
+	for (uint32_t i = 0; i < PARTICLE_COUNT; i++)
 	{
-		float r = 0.25 * sqrt(rngRange(rngEngine));
-		float theta = rngRange(rngEngine) * 2.0 * 3.14159f;
-		float x = r * cos(theta) * (mSwapChainImageExtent.height / (float)mSwapChainImageExtent.width);
+		float r = static_cast<float>(0.25 * sqrt(rngRange(rngEngine)));
+		float theta = static_cast<float>(rngRange(rngEngine) * 2.0 * 3.14159f);
+		float x = r * cos(theta) * ((float)mSwapChainImageExtent.height / (float)mSwapChainImageExtent.width);
 		float y = r * sin(theta);
 		particles[i].position = glm::vec2(x, y);
 		particles[i].velocity = glm::normalize(particles[i].position) * 0.00025f * (rngRange(rngEngine) + 0.3f);
 		particles[i].color = glm::vec3(rngRange(rngEngine), rngRange(rngEngine), rngRange(rngEngine));
 	}
 
-	mUniformDescriptorManager.addDataToSSBOs(mLogicalDevice, mPhysicalDevice, particles.data(),
+	mUniformDescriptorManager.addDataToSSBOs(mLogicalDevice, particles.data(),
 		mComputePipelineStorageList[0].getPipelineBufferDescriptor(2));
 
 	return true;
@@ -243,7 +245,7 @@ bool VulkanManager::cleanupVulkan()
 	//Waits for rendering semaphores to finish
 	vkDeviceWaitIdle(mLogicalDevice);
 
-	int numSwapChainImages = mSwapChainImages.size();
+	size_t numSwapChainImages = mSwapChainImages.size();
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
@@ -316,7 +318,7 @@ bool VulkanManager::drawFrame(GLFWwindow* window, float dt, bool* needToReloadGU
 
 	mMVP_UniformObject.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	mMVP_UniformObject.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	mMVP_UniformObject.proj = glm::perspective(glm::radians(45.0f), mSwapChainImageExtent.width / (float)mSwapChainImageExtent.height, 0.1f, 10.0f);
+	mMVP_UniformObject.proj = glm::perspective(glm::radians(45.0f), (float)mSwapChainImageExtent.width / (float)mSwapChainImageExtent.height, 0.1f, 10.0f);
 	mMVP_UniformObject.proj[1][1] *= -1;
 
 	//CPU waits until fence has been signaled by GPU (rendering done from last iteration of this frame in flight's index)
@@ -452,7 +454,7 @@ bool VulkanManager::drawFrame(GLFWwindow* window, float dt, bool* needToReloadGU
 		return false;
 	}
 
-	handlePipelineChanges(window, needToReloadGUI_Flag);
+	handlePipelineChanges(needToReloadGUI_Flag);
 
 	mCurrentFrame = (mCurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 
@@ -587,7 +589,8 @@ VkResult VulkanManager::CreateDebugUtilsMessengerEXT(VkInstance instance, const 
 	//Makes function pointer to the create debug utils messenger function
 	VkResult(*func)(VkInstance, const VkDebugUtilsMessengerCreateInfoEXT*,
 		const VkAllocationCallbacks*, VkDebugUtilsMessengerEXT*) =
-		(PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+		reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(reinterpret_cast<VkResult(*)>(
+			vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT")));
 
 	if (func != nullptr) {
 		return func(instance, pCreateInfo, pAlloator, pDebugMessenger);
@@ -662,7 +665,7 @@ bool VulkanManager::deviceIsSuitable(VkPhysicalDevice device)
 		&& supportsDeviceFeatures(device);
 }
 
-QueueFamiliesIndexStore VulkanManager::findSuitableQueueFamilies(VkPhysicalDevice device)
+QueueFamiliesIndexStore VulkanManager::findSuitableQueueFamilies(VkPhysicalDevice device) const
 {
 	QueueFamiliesIndexStore queueIndexInfo{};
 	queueIndexInfo.graphicsFamalyIndex = -1;
@@ -674,15 +677,15 @@ QueueFamiliesIndexStore VulkanManager::findSuitableQueueFamilies(VkPhysicalDevic
 	std::vector<VkQueueFamilyProperties> queueProperties(queuePropertiesCount);
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queuePropertiesCount, queueProperties.data());
 
-	int i = 0;
+	uint32_t i = 0;
 	//Checks for graphics support
-	for (VkQueueFamilyProperties queueProperty : queueProperties)
+	for (const VkQueueFamilyProperties& queueProperty : queueProperties)
 	{
 		//Not using an asyncronous compute queue
 		if ((queueProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT) && (queueProperty.queueFlags & VK_QUEUE_COMPUTE_BIT))
 		{
-			queueIndexInfo.graphicsFamalyIndex = i;
-			queueIndexInfo.computeFamalyIndex = i;
+			queueIndexInfo.graphicsFamalyIndex = static_cast<int>(i);
+			queueIndexInfo.computeFamalyIndex = static_cast<int>(i);
 		}
 
 		VkBool32 presentSupported = VK_FALSE;
@@ -690,7 +693,7 @@ QueueFamiliesIndexStore VulkanManager::findSuitableQueueFamilies(VkPhysicalDevic
 
 		if (presentSupported)
 		{
-			queueIndexInfo.presentFamalyIndex = i;
+			queueIndexInfo.presentFamalyIndex = static_cast<int>(i);
 		}
 
 		if (queueIndexInfo.containsAllFamilies())
@@ -842,9 +845,9 @@ bool VulkanManager::createLogicalDevice()
 		return false;
 	}
 
-	vkGetDeviceQueue(mLogicalDevice, queueFamilyIndeciesInfo.graphicsFamalyIndex, 0, &mGraphicsQueue);
-	vkGetDeviceQueue(mLogicalDevice, queueFamilyIndeciesInfo.computeFamalyIndex, 0, &mComputeQueue);
-	vkGetDeviceQueue(mLogicalDevice, queueFamilyIndeciesInfo.presentFamalyIndex, 0, &mPresentQueue);
+	vkGetDeviceQueue(mLogicalDevice, static_cast<uint32_t>(queueFamilyIndeciesInfo.graphicsFamalyIndex), 0, &mGraphicsQueue);
+	vkGetDeviceQueue(mLogicalDevice, static_cast<uint32_t>(queueFamilyIndeciesInfo.computeFamalyIndex), 0, &mComputeQueue);
+	vkGetDeviceQueue(mLogicalDevice, static_cast<uint32_t>(queueFamilyIndeciesInfo.presentFamalyIndex), 0, &mPresentQueue);
 
 	return true;
 }
@@ -860,7 +863,7 @@ bool VulkanManager::createSurface(GLFWwindow* window)
 	return true;
 }
 
-SwapChainSupportDetails VulkanManager::querySwapChainSupport(VkPhysicalDevice device)
+SwapChainSupportDetails VulkanManager::querySwapChainSupport(VkPhysicalDevice device) const
 {
 	SwapChainSupportDetails swapChainDetails{};
 
@@ -886,6 +889,15 @@ SwapChainSupportDetails VulkanManager::querySwapChainSupport(VkPhysicalDevice de
 
 	return swapChainDetails;
 }
+
+//Inline one liners
+VkInstance VulkanManager::getInstance() const { return mInstance; }
+VkDevice VulkanManager::getLogicalDevice() const { return mLogicalDevice; }
+VkPhysicalDevice VulkanManager::getPhysicalDevice() const { return mPhysicalDevice; }
+const VkFormat* VulkanManager::getSwapChainImageFormatRef() const { return &mSwapChainImageFormat; }
+VkFormat VulkanManager::getDepthFormat() const { return mDepthFormat; }
+VkSampleCountFlagBits VulkanManager::getMSAA_Samples() const { return mMSAA_Samples; }
+VkQueue VulkanManager::getGraphicsQueue() const { return mGraphicsQueue; }
 
 VkSurfaceFormatKHR VulkanManager::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> availableFormats)
 {
@@ -1061,10 +1073,10 @@ void VulkanManager::cleanupSwapChain()
 
 bool VulkanManager::createSwapChainImageViews()
 {
-	int imageCount = mSwapChainImages.size();
+	size_t imageCount = mSwapChainImages.size();
 	mSwapChainImageViews.resize(imageCount);
 
-	for (int i = 0; i < imageCount; i++)
+	for (uint32_t i = 0; i < imageCount; i++)
 	{
 		if (!createImageView(mLogicalDevice, mSwapChainImages[i], &mSwapChainImageViews[i], mSwapChainImageFormat, 
 			VK_IMAGE_ASPECT_COLOR_BIT, 1))
@@ -1116,7 +1128,7 @@ bool VulkanManager::createCommandPool()
 	VkCommandPoolCreateInfo poolCreateInfo{};
 	poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-	poolCreateInfo.queueFamilyIndex = queueFamilies.graphicsFamalyIndex;
+	poolCreateInfo.queueFamilyIndex = static_cast<uint32_t>(queueFamilies.graphicsFamalyIndex);
 
 	if (vkCreateCommandPool(mLogicalDevice, &poolCreateInfo, nullptr, &mCommandPool) != VK_SUCCESS)
 	{
@@ -1146,7 +1158,7 @@ bool VulkanManager::createCommandBuffers()
 	return true;
 }
 
-void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReloadGUI_Flag)
+void VulkanManager::handlePipelineChanges(bool* needToReloadGUI_Flag)
 {
 	if (mSwapScenesTriggered)
 	{
@@ -1193,8 +1205,8 @@ void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReload
 		configValues.targetMSAA_Image = &mMSAA_ColorImage;
 		configValues.targetMSAA_ImageView = &mMSAA_ColorImageView;
 
-		char* vertShader = "../Assets/Shaders/ByteEncoded/RenderModel_VS.spv";
-		char* fragShader = "../Assets/Shaders/ByteEncoded/RenderModel_FS.spv";
+		char* vertShader = "../../../..//Assets/Shaders/ByteEncoded/RenderModel_VS.spv";
+		char* fragShader = "../../../..//Assets/Shaders/ByteEncoded/RenderModel_FS.spv";
 
 		VertexInputData vertexInputInfo = mHouseMesh.getVertexInputData();
 
@@ -1210,8 +1222,8 @@ void VulkanManager::handlePipelineChanges(GLFWwindow* window, bool* needToReload
 		configValues.targetMSAA_Image = &mMSAA_ColorImage;
 		configValues.targetMSAA_ImageView = &mMSAA_ColorImageView;
 
-		vertShader = "../Assets/Shaders/ByteEncoded/RenderParticles_VS.spv";
-		fragShader = "../Assets/Shaders/ByteEncoded/RenderParticles_FS.spv";
+		vertShader = "../../../..//Assets/Shaders/ByteEncoded/RenderParticles_VS.spv";
+		fragShader = "../../../..//Assets/Shaders/ByteEncoded/RenderParticles_FS.spv";
 
 		vertexInputInfo = Particle2D::getParticleInputData();
 
@@ -1244,7 +1256,7 @@ void VulkanManager::handleInjectPipelineMemoryBarriers(VkCommandBuffer commandBu
 
 bool VulkanManager::createSyncObjects()
 {
-	int numSwapChainImages = mSwapChainImages.size();
+	size_t numSwapChainImages = mSwapChainImages.size();
 
 	mImageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	mWhileRenderingFences.resize(MAX_FRAMES_IN_FLIGHT);
@@ -1283,7 +1295,7 @@ bool VulkanManager::createSyncObjects()
 	return true;
 }
 
-void VulkanManager::renderGUI_DynamicRender(VkCommandBuffer commandBuffer, int imageIndex)
+void VulkanManager::renderGUI_DynamicRender(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
 	updateGUI();
 
@@ -1327,7 +1339,7 @@ void VulkanManager::renderGUI_DynamicRender(VkCommandBuffer commandBuffer, int i
 	fpCmdEndRenderingKHR(commandBuffer);
 }
 
-VkSampleCountFlagBits VulkanManager::getMaxUsableSampleCount()
+VkSampleCountFlagBits VulkanManager::getMaxUsableSampleCount() const
 {
 	VkPhysicalDeviceProperties props{};
 	vkGetPhysicalDeviceProperties(mPhysicalDevice, &props);
@@ -1383,8 +1395,40 @@ void VulkanManager::updateGUI()
 	ImGui::Render();
 }
 
-void VulkanManager::renderGUI(VkCommandBuffer commandBuffer, int imageIndex)
+void VulkanManager::renderGUI(VkCommandBuffer commandBuffer)
 {
 	updateGUI();
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer, VK_NULL_HANDLE);
+}
+
+bool QueueFamiliesIndexStore::containsAllFamilies() const 
+{ return graphicsFamalyIndex != -1 && computeFamalyIndex != -1 && presentFamalyIndex != -1; }
+
+std::set<uint32_t> QueueFamiliesIndexStore::getVectorOfIndecies()
+{
+	return std::set<uint32_t> {
+		static_cast<uint32_t>(graphicsFamalyIndex),
+		static_cast<uint32_t>(computeFamalyIndex),
+		static_cast<uint32_t>(presentFamalyIndex)
+	};
+}
+
+VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
+{
+	(void)messageSeverity;
+	(void)messageType;
+	(void)pUserData;
+
+	std::cerr << "Validation Layer: " << pCallbackData->pMessage << std::endl;
+
+	return VK_FALSE;
+}
+
+void framebufferResizeCallback(GLFWwindow* window, int width, int height) noexcept
+{
+	(void)width;
+	(void)height;
+
+	VulkanManager* vulkanManagerRef = reinterpret_cast<VulkanManager*>(glfwGetWindowUserPointer(window));
+	vulkanManagerRef->markFramebuffersResized();
 }

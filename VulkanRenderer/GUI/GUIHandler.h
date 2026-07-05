@@ -2,7 +2,7 @@
 
 #include <vulkan/vulkan.h>
 #include <glfw/glfw3.h>
-#include "../VulkanManager.h"
+#include "VulkanRenderer/VulkanManager.h"
 
 class GUIHandler {
 public:
@@ -10,8 +10,11 @@ public:
 	void checkGUI_State(GLFWwindow* window, VulkanManager* vulkanManager);
 	void cleanupGUI(VkDevice logicalDevice);
 
-	inline bool* getReloadGUI_Flag() { return &mNeedToReloadGUI; }
+	bool* getReloadGUI_Flag();
 private:
-	VkDescriptorPool mImGuiDescriptorPool;
+	VkDescriptorPool mImGuiDescriptorPool = VK_NULL_HANDLE;
 	bool mNeedToReloadGUI = false;
+
+	//Padding for compiler warning
+	uint8_t padding[7] = {};
 };

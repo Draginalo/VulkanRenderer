@@ -27,14 +27,14 @@ bool loadModel(const char* filepath, std::vector<Vertex3D>* vertices, std::vecto
 		{
 			Vertex3D vertex{};
 			vertex.position = {
-				attrib.vertices[3 * index.vertex_index],
-				attrib.vertices[3 * index.vertex_index + 1],
-				attrib.vertices[3 * index.vertex_index + 2]
+				attrib.vertices[static_cast<uint32_t>(3 * index.vertex_index)],
+				attrib.vertices[static_cast<uint32_t>(3 * index.vertex_index + 1)],
+				attrib.vertices[static_cast<uint32_t>(3 * index.vertex_index + 2)]
 			};
 
 			vertex.texCoords = {
-				attrib.texcoords[2 * index.texcoord_index],
-				1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+				attrib.texcoords[static_cast<uint32_t>(2 * index.texcoord_index)],
+				1.0f - attrib.texcoords[static_cast<uint32_t>(2 * index.texcoord_index + 1)]
 			};
 
 			vertex.color = { 1.0f, 1.0f, 1.0f };

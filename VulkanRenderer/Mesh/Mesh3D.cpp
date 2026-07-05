@@ -1,5 +1,5 @@
 #include "Mesh3D.h"
-#include "../Helpers/ModelHelpers.h"
+#include "VulkanRenderer/Helpers/ModelHelpers.h"
 
 bool Mesh3D::createVertexDataFromModel(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkCommandPool commandPool,
 	VkQueue submitQueue, const char* modelFilepath)

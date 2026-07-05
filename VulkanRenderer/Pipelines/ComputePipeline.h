@@ -2,7 +2,7 @@
 
 #include "vulkan/vulkan.h"
 #include "Pipeline.h"
-#include "../Mesh/Drawable.h"
+#include "VulkanRenderer/Mesh/Drawable.h"
 
 #include <iostream>
 #include <fstream>
@@ -11,13 +11,14 @@
 
 class ComputePipeline : public Pipeline {
 public:
-	ComputePipeline() : Pipeline(true) {}
+	ComputePipeline();
 
 	bool creatPipeline(VkDevice logicalDevice, glm::uvec3 groupCount, glm::uvec3 groupCountDivisor);
 	void bindPipeline(VkCommandBuffer commandBuffer) override;
 	bool recordPipelineCommands(VkCommandBuffer commandBuffer, const Drawable* drawable, VkImage& swapChainImage, 
-		VkImageView& swapChainImageView, uint32_t currFrame, void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*), void (*fpCmdEndRenderingKHR)(VkCommandBuffer)) override;
+		VkImageView& swapChainImageView, uint32_t currFrame, void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*), 
+		void (*fpCmdEndRenderingKHR)(VkCommandBuffer)) override;
 private:
-	glm::uvec3 mGroupCount;
-	glm::uvec3 mGroupCountDivisor;
+	glm::uvec3 mGroupCount = { 0.0, 0.0, 0.0 };
+	glm::uvec3 mGroupCountDivisor = { 0.0, 0.0, 0.0 };
 };
