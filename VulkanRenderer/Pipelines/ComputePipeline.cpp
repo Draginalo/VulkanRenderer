@@ -21,7 +21,7 @@ bool ComputePipeline::creatPipeline(VkDevice logicalDevice, glm::uvec3 groupCoun
 	}
 
 	//TODO: Allow for passing of compute shaders to assign to pipeline like graphics pipelines
-	auto computeShaderCode = readShaderFile("../../../../Assets/Shaders/ByteEncoded/ComputeParticles_CS.spv");
+	auto computeShaderCode = readShaderFile("Assets/Shaders/ByteEncoded/ComputeParticles_CS.spv");
 
 	VkShaderModule computeShaderModule = createShaderModule(logicalDevice, computeShaderCode);
 

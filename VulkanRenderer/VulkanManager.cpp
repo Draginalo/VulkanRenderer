@@ -38,7 +38,7 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	// storage list somewhere lfor assigning pointers to those assets)
 	uint32_t texMipLevels = 0;
 	createTextureImage(mLogicalDevice, mPhysicalDevice, mTextureImage, mTextureMemory, mCommandPool, mGraphicsQueue,
-		"../../../../Assets/Models/Room/room.png", texMipLevels);
+		"Assets/Models/Room/room.png", texMipLevels);
 
 	if (!createImageView(mLogicalDevice, mTextureImage, &mTextureImageView, VK_FORMAT_R8G8B8A8_SRGB,
 		VK_IMAGE_ASPECT_COLOR_BIT, texMipLevels) != VK_SUCCESS)
@@ -51,7 +51,7 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	createTextureSampler(mLogicalDevice, mPhysicalDevice, &mTextureSampler);
 
 	//Creates the house mesh
-	mHouseMesh.createVertexDataFromModel(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue, "../../../..//Assets/Models/Room/room.obj");
+	mHouseMesh.createVertexDataFromModel(mLogicalDevice, mPhysicalDevice, mCommandPool, mGraphicsQueue, "Assets/Models/Room/room.obj");
 
 	////Manual defining of the uniform descriptors for the pipelines to be used
 
@@ -149,8 +149,8 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	configValues.targetMSAA_Image = &mMSAA_ColorImage;
 	configValues.targetMSAA_ImageView = &mMSAA_ColorImageView;
 
-	char* vertShader = "../../../..//Assets/Shaders/ByteEncoded/RenderModel_VS.spv";
-	char* fragShader = "../../../..//Assets/Shaders/ByteEncoded/RenderModel_FS.spv";
+	char* vertShader = "Assets/Shaders/ByteEncoded/RenderModel_VS.spv";
+	char* fragShader = "Assets/Shaders/ByteEncoded/RenderModel_FS.spv";
 
 	VertexInputData vertexInputInfo = mHouseMesh.getVertexInputData();
 
@@ -167,8 +167,8 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	configValues.targetMSAA_Image = &mMSAA_ColorImage;
 	configValues.targetMSAA_ImageView = &mMSAA_ColorImageView;
 
-	vertShader = "../../../..//Assets/Shaders/ByteEncoded/RenderParticles_VS.spv";
-	fragShader = "../../../..//Assets/Shaders/ByteEncoded/RenderParticles_FS.spv";
+	vertShader = "Assets/Shaders/ByteEncoded/RenderParticles_VS.spv";
+	fragShader = "Assets/Shaders/ByteEncoded/RenderParticles_FS.spv";
 
 	vertexInputInfo = Particle2D::getParticleInputData();
 
@@ -1205,8 +1205,8 @@ void VulkanManager::handlePipelineChanges(bool* needToReloadGUI_Flag)
 		configValues.targetMSAA_Image = &mMSAA_ColorImage;
 		configValues.targetMSAA_ImageView = &mMSAA_ColorImageView;
 
-		char* vertShader = "../../../..//Assets/Shaders/ByteEncoded/RenderModel_VS.spv";
-		char* fragShader = "../../../..//Assets/Shaders/ByteEncoded/RenderModel_FS.spv";
+		char* vertShader = "Assets/Shaders/ByteEncoded/RenderModel_VS.spv";
+		char* fragShader = "Assets/Shaders/ByteEncoded/RenderModel_FS.spv";
 
 		VertexInputData vertexInputInfo = mHouseMesh.getVertexInputData();
 
@@ -1222,8 +1222,8 @@ void VulkanManager::handlePipelineChanges(bool* needToReloadGUI_Flag)
 		configValues.targetMSAA_Image = &mMSAA_ColorImage;
 		configValues.targetMSAA_ImageView = &mMSAA_ColorImageView;
 
-		vertShader = "../../../..//Assets/Shaders/ByteEncoded/RenderParticles_VS.spv";
-		fragShader = "../../../..//Assets/Shaders/ByteEncoded/RenderParticles_FS.spv";
+		vertShader = "Assets/Shaders/ByteEncoded/RenderParticles_VS.spv";
+		fragShader = "Assets/Shaders/ByteEncoded/RenderParticles_FS.spv";
 
 		vertexInputInfo = Particle2D::getParticleInputData();
 

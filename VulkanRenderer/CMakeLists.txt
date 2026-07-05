@@ -19,14 +19,21 @@ file(
 
 include(${PROJECT_SOURCE_DIR}/externals/compileBytecodeShaders.cmake)
 
-#Copies asset folder to bin
+# Builds the executable with all the header and source files in this directory
+add_executable(VulkanRenderer ${VULKAN_RENDERER_SRC} ${VULKAN_RENDERER_INC})
+
+#Gets build exe output directory
+set(EXE_DIR "$<TARGET_FILE_DIR:VulkanRenderer>")
+
+#Sets the working directory to the output exe dir
+set_property(TARGET VulkanRenderer PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${EXE_DIR}")
+
+#Copies assets to exe output dir
 add_custom_target(copyAssetsFP ALL COMMAND ${CMAKE_COMMAND} -E copy_directory
 ${PROJECT_SOURCE_DIR}/Assets/
-${PROJECT_SOURCE_DIR}/Assets/)
+${EXE_DIR}/Assets/)
 
-# Builds the executable with all the header and source files in this directory
-add_executable (VulkanRenderer ${VULKAN_RENDERER_SRC} ${VULKAN_RENDERER_INC})
-
+#Sets compiler warning settings
 if (MSVC)
     set(COMPILE_OPTIONS
         "/Wall" # Enable warnings (level 4; use Wall for highest)
@@ -52,4 +59,4 @@ target_link_libraries(VulkanRenderer PRIVATE Vulkan::Vulkan)
 target_link_libraries(VulkanRenderer PUBLIC glfw glm IMGUI external_headers)
 
 #Adds the compiled shaders and assets as dependencies (generates the encoded shaders at build time)
-add_dependencies(VulkanRenderer COMPILED_SHADERS copyAssetsFP)
+add_dependencies(VulkanRenderer COMPILED_SHADERS)
