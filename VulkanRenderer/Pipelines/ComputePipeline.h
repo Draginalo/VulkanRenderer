@@ -16,8 +16,8 @@ public:
 	bool creatPipeline(VkDevice logicalDevice, glm::uvec3 groupCount, glm::uvec3 groupCountDivisor);
 	void bindPipeline(VkCommandBuffer commandBuffer) override;
 	bool recordPipelineCommands(VkCommandBuffer commandBuffer, const Drawable* drawable, VkImage& swapChainImage, 
-		VkImageView& swapChainImageView, uint32_t currFrame, void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*), 
-		void (*fpCmdEndRenderingKHR)(VkCommandBuffer)) override;
+		VkImageView& swapChainImageView, uint32_t currFrame, void (__stdcall *fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*),
+		void (__stdcall *fpCmdEndRenderingKHR)(VkCommandBuffer)) override;
 private:
 	glm::uvec3 mGroupCount = { 0.0, 0.0, 0.0 };
 	glm::uvec3 mGroupCountDivisor = { 0.0, 0.0, 0.0 };

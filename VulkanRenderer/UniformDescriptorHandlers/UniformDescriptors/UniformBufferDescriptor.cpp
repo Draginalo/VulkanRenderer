@@ -3,7 +3,7 @@
 UniformBufferDescriptor::UniformBufferDescriptor(DescriptorLevel descriptorLevel, uint32_t dstBinding, 
 	VkShaderStageFlagBits stageFlags, VkDescriptorType uniformType, uint32_t dataSize, void* dataPointer, 
 	bool sourceFromPastFrame) : UniformDescriptor(descriptorLevel, dstBinding, stageFlags, uniformType),
-	mBufferInfo({ nullptr, 0, dataSize }), mDataPointer(dataPointer), mSourceFromPastFrame(sourceFromPastFrame) { }
+	mBufferInfo({ VK_NULL_HANDLE, 0, dataSize }), mDataPointer(dataPointer), mSourceFromPastFrame(sourceFromPastFrame) { }
 
 //Inline one liners
 void UniformBufferDescriptor::setBufferInfo(VkDescriptorBufferInfo bufferInfo) { mBufferInfo = bufferInfo; }

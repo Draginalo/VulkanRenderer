@@ -20,8 +20,10 @@ struct ConfigurablePipelineValues {
 	VkBool32 depthWriteEnabled;
 	VkSampleCountFlagBits samples;
 
-	//Padding for compiler warning
-	uint8_t padding[4];
+	//Explicit padding for x64 since struct size is not divisable by 8 in x64
+	#if defined(_WIN64) || defined(__x86_64__)
+		uint8_t padding[4];
+	#endif
 };
 
 class GraphicsPipeline : public Pipeline {
@@ -52,12 +54,12 @@ public:
 
 	void bindPipeline(VkCommandBuffer commandBuffer) override;
 	bool recordPipelineCommands(VkCommandBuffer commandBuffer, const Drawable* drawable, VkImage& swapChainImage, 
-		VkImageView& swapChainImageView, uint32_t currFrame, void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*), void (*fpCmdEndRenderingKHR)(VkCommandBuffer)) override;
+		VkImageView& swapChainImageView, uint32_t currFrame, 
+		void (__stdcall *fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*), 
+		void (__stdcall *fpCmdEndRenderingKHR)(VkCommandBuffer)) override;
 
 	void updateRenderExtents(VkExtent2D newExtents);
 private:
-	std::vector<VkFramebuffer> mFramebuffers;
-
 	VkRenderPass mRenderPass = VK_NULL_HANDLE;
 
 	VkImageView* mDepthImageView = nullptr;
@@ -66,12 +68,19 @@ private:
 	VkImageView* mMSAA_ImageView = nullptr;
 	VkImage* mMSAA_Image = nullptr;
 
+	std::vector<VkFramebuffer> mFramebuffers;
+
 	VkExtent2D mRenderExtent = {};
 
 	VkSampleCountFlagBits mMSAA_PipelineSamples = VK_SAMPLE_COUNT_1_BIT;
 
 	bool mDynamicRenderingEnabled = true;
 
-	//Padding for compiler warning
-	uint8_t padding[3] = {};
+	//Explicit padding for compiler warning (3 bits of padding EXCEPT for x86 release mode (when size of a vector 
+	// is only devisible by 4 and not divisable by 8))
+	#if ((defined(_M_IX86) || defined(__i386__)) && !defined(_DEBUG))
+		uint8_t padding[7] = {};
+	#else
+		uint8_t padding[3] = {};
+	#endif
 };

@@ -372,8 +372,9 @@ void GraphicsPipeline::bindPipeline(VkCommandBuffer commandBuffer)
 }
 
 bool GraphicsPipeline::recordPipelineCommands(VkCommandBuffer commandBuffer, const Drawable* drawable, VkImage& swapChainImage,
-	VkImageView& swapChainImageView, uint32_t currFrame, void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*), 
-	void (*fpCmdEndRenderingKHR)(VkCommandBuffer))
+	VkImageView& swapChainImageView, uint32_t currFrame, 
+	void (__stdcall *fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*),
+	void (__stdcall *fpCmdEndRenderingKHR)(VkCommandBuffer))
 {
 	//Transitions swap chain correct formats, accesses, and stages for rendering (as resolve attachment for msaa)
 	transitionImageLayout(commandBuffer, swapChainImage, VK_IMAGE_LAYOUT_UNDEFINED,

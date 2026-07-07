@@ -40,4 +40,9 @@ protected:
 	VkShaderStageFlagBits mStageFlags;
 	VkDescriptorType mUniformType;
 	DescriptorLevel mDescriptorLevel;
+
+	//Explicit padding for compiler warning, since this class' size is not divisable by 8 in x86
+	#if (defined(_M_IX86) || defined(__i386__))
+		uint8_t padding[4] = {};
+	#endif
 };

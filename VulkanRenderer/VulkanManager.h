@@ -59,12 +59,12 @@ enum Scene
 
 struct SceneData 
 {
-	std::string name = "";
+	char* name = "";
 	std::vector<DrawableData> sceneGameObjects = {};
 	Scene sceneType = {};
 	bool selected = false;
 
-	//Padding for compiler warning
+	//Explicit padding for compiler warning
 	uint8_t padding[3] = {};
 };
 
@@ -74,8 +74,10 @@ struct SwapChainSupportDetails
 	std::vector<VkPresentModeKHR> presentModes;
 	VkSurfaceCapabilitiesKHR capabilities;
 
-	//Padding for compiler warning
-	uint8_t padding[4];
+	//Explicit padding for x64 since struct size is not divisable by 8 in x64
+	#if defined(_WIN64) || defined(__x86_64__)
+		uint8_t padding[4];
+	#endif
 };
 
 class VulkanManager {
@@ -162,6 +164,31 @@ private:
 
 	Mesh3D mHouseMesh{};
 
+	VkDebugUtilsMessengerEXT mDebugMessanger{};
+
+	//Main depth attachment data
+	VkImage mDepthImage = VK_NULL_HANDLE;
+	VkDeviceMemory mDepthMemory = VK_NULL_HANDLE;
+	VkImageView mDepthImageView = VK_NULL_HANDLE;
+
+	//Main color attachment for MSAA
+	VkImage mMSAA_ColorImage = VK_NULL_HANDLE;
+	VkDeviceMemory mMSAA_ColorhMemory = VK_NULL_HANDLE;
+	VkImageView mMSAA_ColorImageView = VK_NULL_HANDLE;
+
+	VkCommandPool mCommandPool = VK_NULL_HANDLE;
+
+	VkSurfaceKHR mSurface = VK_NULL_HANDLE;
+	VkSwapchainKHR mSwapChain = VK_NULL_HANDLE;
+
+	//Main texture image data
+	VkImage mTextureImage = VK_NULL_HANDLE;
+	VkImageView mTextureImageView = VK_NULL_HANDLE;
+	VkDeviceMemory mTextureMemory = VK_NULL_HANDLE;
+	VkSampler mTextureSampler = VK_NULL_HANDLE;
+
+	BufferDrawer mParticleDrawer{};
+
 	RenderGraph mActiveRenderGraph{};
 
 	SceneData mSelectedScene{};
@@ -196,10 +223,6 @@ private:
 		"VK_LAYER_KHRONOS_validation"
 	};
 
-	BufferDrawer mParticleDrawer{};
-
-	VkDebugUtilsMessengerEXT mDebugMessanger{};
-
 	VkInstance mInstance = VK_NULL_HANDLE;
 	VkPhysicalDevice mPhysicalDevice = VK_NULL_HANDLE;
 	VkDevice mLogicalDevice = VK_NULL_HANDLE;
@@ -209,32 +232,12 @@ private:
 	VkQueue mComputeQueue = VK_NULL_HANDLE;
 	VkQueue mPresentQueue = VK_NULL_HANDLE;
 
-	VkSurfaceKHR mSurface = VK_NULL_HANDLE;
-	VkSwapchainKHR mSwapChain = VK_NULL_HANDLE;
 	VkExtent2D mSwapChainImageExtent{};
 
-	//Main depth attachment data
-	VkImage mDepthImage = VK_NULL_HANDLE;
-	VkDeviceMemory mDepthMemory = VK_NULL_HANDLE;
-	VkImageView mDepthImageView = VK_NULL_HANDLE;
-
-	//Main color attachment for MSAA
-	VkImage mMSAA_ColorImage = VK_NULL_HANDLE;
-	VkDeviceMemory mMSAA_ColorhMemory = VK_NULL_HANDLE;
-	VkImageView mMSAA_ColorImageView = VK_NULL_HANDLE;
-
-	VkCommandPool mCommandPool = VK_NULL_HANDLE;
-
 	//Function pointers for additional feature functions
-	void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*) {};
-	void (*fpCmdEndRenderingKHR)(VkCommandBuffer) {};
-	void(*fpCmdPipelineBarrier2)(VkCommandBuffer, const VkDependencyInfo*) {};
-
-	//Main texture image data
-	VkImage mTextureImage = VK_NULL_HANDLE;
-	VkImageView mTextureImageView = VK_NULL_HANDLE;
-	VkDeviceMemory mTextureMemory = VK_NULL_HANDLE;
-	VkSampler mTextureSampler = VK_NULL_HANDLE;
+	void(__stdcall* fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*) {};
+	void(__stdcall* fpCmdEndRenderingKHR)(VkCommandBuffer) {};
+	void(__stdcall* fpCmdPipelineBarrier2)(VkCommandBuffer, const VkDependencyInfo*) {};
 
 	VkFormat mSwapChainImageFormat{};
 	VkFormat mDepthFormat{};
@@ -256,8 +259,20 @@ private:
 	bool mUsingDynamicRenderingForGUI = true; //For ImGui display, to not imediately switch with the one for logic while still rendering
 	bool mUsingDynamicRendering = true;
 
-	//Padding for compiler warning
-	uint8_t padding[2] = {};
+	//Extra padding for x64 since x64 does not align to 16 but x86 does
+	#if defined(_WIN64) || defined(__x86_64__)
+		#if (defined(_DEBUG))
+		uint8_t padding[2]{};
+		#else
+			uint8_t padding[2]{}; //Contributed by RenderGraph vector member
+		#endif
+	#else
+		#if (defined(_DEBUG))
+			uint8_t padding[2]{};
+		#else
+			uint8_t padding[14]{}; //Contributed by RenderGraph and UniformDescriptorManager vector member
+		#endif
+	#endif
 };
 
 static void framebufferResizeCallback(GLFWwindow* window, int width, int height) noexcept;

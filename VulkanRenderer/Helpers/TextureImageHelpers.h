@@ -17,7 +17,7 @@ bool createImage(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, uint32
 void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout,
 	VkAccessFlags2 srcAccessMask, VkAccessFlags2 dstAccessMask, VkPipelineStageFlags2 srcStageMask,
 	VkPipelineStageFlags2 dstStageMask, VkImageAspectFlags aspectMask, uint32_t mipLevels,
-	void(*fpCmdPipelineBarrier2)(VkCommandBuffer, const VkDependencyInfo*));
+	void(__stdcall *fpCmdPipelineBarrier2)(VkCommandBuffer, const VkDependencyInfo*) = nullptr);
 
 void copyBufferToImage(VkBuffer srcBuffer, VkImage dstImage, uint32_t width, uint32_t height,
 	uint32_t mipLevels, VkCommandBuffer commandBuffer);

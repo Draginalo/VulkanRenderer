@@ -49,6 +49,11 @@ private:
 	void* mDataPointer = nullptr;
 	bool mSourceFromPastFrame = false;
 
-	//Padding for compiler warning
-	uint8_t padding[7] = {};
+	//Explicit padding for compiler warning, since there is 3 bytes of padding EXCEPT when this class' size is not 
+	// divisable by 8 in x86
+	#if (defined(_M_IX86) || defined(__i386__))
+		uint8_t padding[3] = {};
+	#else
+		uint8_t padding[7] = {};
+	#endif
 };

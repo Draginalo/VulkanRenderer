@@ -54,7 +54,7 @@ bool createTextureImage(VkDevice logicalDevice, VkPhysicalDevice physicalDevice,
 
 	transitionImageLayout(commandBuffer, textureImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		VK_ACCESS_2_NONE, VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-		VK_IMAGE_ASPECT_COLOR_BIT, mipLevels, nullptr);
+		VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
 
 	copyBufferToImage(stageBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), 0, commandBuffer);
 
@@ -196,7 +196,7 @@ bool createImage(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, uint32
 void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout,
 	VkAccessFlags2 srcAccessMask, VkAccessFlags2 dstAccessMask, VkPipelineStageFlags2 srcStageMask,
 	VkPipelineStageFlags2 dstStageMask, VkImageAspectFlags aspectMask, uint32_t mipLevels,
-	void(*fpCmdPipelineBarrier2)(VkCommandBuffer, const VkDependencyInfo*))
+	void(__stdcall *fpCmdPipelineBarrier2)(VkCommandBuffer, const VkDependencyInfo*))
 {
 	if (fpCmdPipelineBarrier2 != nullptr) {
 		VkImageSubresourceRange subResourceRange{};

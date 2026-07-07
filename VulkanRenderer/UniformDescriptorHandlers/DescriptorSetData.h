@@ -11,8 +11,10 @@ struct BufferData {
 	std::vector<VkBuffer> buffers;
 	uint32_t currentlyAllocatedSize = 0;
 
-	//Padding for compiler warning
-	uint8_t padding[4];
+	//Explicit padding for x64 since struct size is not divisable by 8 in x64
+	#if defined(_WIN64) || defined(__x86_64__)
+		uint8_t padding[4];
+	#endif
 };
 
 class DescriptorSetData {
@@ -45,17 +47,22 @@ public:
 
 	void cleanup(VkDevice logicalDevice) const;
 private:
-	std::vector<UniformBufferDescriptor> mUniformBufferDescriptors;
-	std::vector<UniformImageDescriptor> mUniformImageDescriptors;
-	std::vector<VkDescriptorSet> mDescriptorSets;
-
-	VkDescriptorSetLayout mDescriptorSetLayout = nullptr;
+	VkDescriptorSetLayout mDescriptorSetLayout = VK_NULL_HANDLE;
 
 	VkDeviceSize mTotalUniformBufferSize = 0;
 	VkDeviceSize mTotalStorageBufferSize = 0;
 
+	std::vector<UniformBufferDescriptor> mUniformBufferDescriptors;
+	std::vector<UniformImageDescriptor> mUniformImageDescriptors;
+	std::vector<VkDescriptorSet> mDescriptorSets;
+
 	uint32_t mTotalDescriptorsForMaterial = 0;
 
-	//Padding for compiler warning
-	uint8_t padding[4] = {};
+	//Explicit padding for compiler warning (4 bits of padding EXCEPT for x86 release mode (when size of a vector 
+	// is only devisible by 4 and not divisable by 8))
+	#if ((defined(_M_IX86) || defined(__i386__)) && !defined(_DEBUG))
+		uint8_t padding[8] = {};
+	#else
+		uint8_t padding[4] = {};
+	#endif
 };

@@ -15,6 +15,6 @@ private:
 	VkDescriptorPool mImGuiDescriptorPool = VK_NULL_HANDLE;
 	bool mNeedToReloadGUI = false;
 
-	//Padding for compiler warning
+	//Explicit padding for compiler warning
 	uint8_t padding[7] = {};
 };

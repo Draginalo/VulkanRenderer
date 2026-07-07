@@ -19,6 +19,11 @@ class Pipeline;
 struct Material {
 	DescriptorSetData materialDescriptorSetData;
 	Pipeline* pipelineForMaterial = nullptr;
+
+	//Explicit padding for compiler warning, since this struct's size is not divisable by 8 in x86
+	#if (defined(_M_IX86) || defined(__i386__))
+		uint8_t padding[4] = {};
+	#endif
 };
 
 struct PipelineDependencyInfo {
@@ -57,9 +62,9 @@ public:
 		std::vector<UniformImageDescriptor> uniformImageDescriptors, VkDevice logicalDevice, VkDescriptorPool descriptorPool,
 		BufferData* destUniformBuffers, BufferData* destStorageBuffers, uint32_t maxFramesInFlight);
 
-	virtual bool recordPipelineCommands(VkCommandBuffer commandBuffer, const Drawable* drawable, VkImage& swapChainImage, 
-		VkImageView& swapChainImageView, uint32_t currFrame, void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*), 
-		void (*fpCmdEndRenderingKHR)(VkCommandBuffer)) = 0;
+	virtual bool recordPipelineCommands(VkCommandBuffer commandBuffer, const Drawable* drawable, VkImage& swapChainImage,
+		VkImageView& swapChainImageView, uint32_t currFrame, void(__stdcall* fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*),
+		void(__stdcall* fpCmdEndRenderingKHR)(VkCommandBuffer)) = 0;
 
 	virtual void cleanupPipeline(VkDevice logicalDevice);
 
@@ -84,18 +89,24 @@ protected:
 	Material mBaseMaterial;
 	DescriptorSetData mPipelineDescriptorSetData;
 
+	VkPipelineLayout mPipelineLayout = {};
+	VkPipeline mPipeline = {};
+
 	PipelineDependencyInfo mDependencyInfo;
 
 	std::vector<Material> mPipelineMaterials;
-
-	VkPipelineLayout mPipelineLayout = {};
-	VkPipeline mPipeline = {};
 
 	uint32_t mPipelineID;
 	static uint32_t mNumPipelineInstances;
 
 	bool mIsComputePipeline = false;
 
-	//Padding for compiler warning
-	uint8_t padding[3] = {};
+
+	//Explicit padding for compiler warning, since there is 3 bytes of padding EXCEPT when this class' size is not 
+	// divisable by 8 in x86
+	#if (defined(_M_IX86) || defined(__i386__))
+		uint8_t padding[7] = {};
+	#else
+		uint8_t padding[3] = {};
+	#endif
 };

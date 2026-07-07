@@ -160,7 +160,8 @@ void DescriptorSetData::updateBufferUniforms(void* destBuffer) const
 			uint8_t* bufferDataPointerOffset = static_cast<uint8_t*>(destBuffer) +
 				static_cast<size_t>(mUniformBufferDescriptors[i].getOffset());
 
-			memcpy(bufferDataPointerOffset, mUniformBufferDescriptors[i].getDataPointer(), mUniformBufferDescriptors[i].getDataSize());
+			memcpy(bufferDataPointerOffset, mUniformBufferDescriptors[i].getDataPointer(), 
+				static_cast<size_t>(mUniformBufferDescriptors[i].getDataSize()));
 		}
 	}
 }

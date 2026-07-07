@@ -55,9 +55,9 @@ void ComputePipeline::bindPipeline(VkCommandBuffer commandBuffer)
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, mPipeline);
 }
 
-bool ComputePipeline::recordPipelineCommands(VkCommandBuffer commandBuffer, const Drawable* drawable, VkImage& swapChainImage, 
-	VkImageView& swapChainImageView, uint32_t currFrame, void (*fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*), 
-	void (*fpCmdEndRenderingKHR)(VkCommandBuffer))
+bool ComputePipeline::recordPipelineCommands(VkCommandBuffer commandBuffer, const Drawable* drawable, VkImage& swapChainImage,
+	VkImageView& swapChainImageView, uint32_t currFrame, void(__stdcall* fpCmdBeginRenderingKHR)(VkCommandBuffer, const VkRenderingInfo*),
+	void(__stdcall* fpCmdEndRenderingKHR)(VkCommandBuffer))
 {
 	(void)drawable;
 	(void)swapChainImage;

@@ -64,6 +64,8 @@ THE SOFTWARE.
 #ifndef TINY_OBJ_LOADER_H_
 #define TINY_OBJ_LOADER_H_
 
+#pragma GCC system_header
+
 #include <algorithm>
 #include <map>
 #include <string>

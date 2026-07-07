@@ -27,12 +27,16 @@ public:
 
 	const VertexInputData getVertexInputData() const;
 protected:
-	std::vector<uint32_t> mIndecies;
-
 	VkBuffer mVertexBuffer = VK_NULL_HANDLE;
 	VkBuffer mIndeciesBuffer = VK_NULL_HANDLE;
 	VkDeviceMemory mVertexBufferMemory = VK_NULL_HANDLE;
 	VkDeviceMemory mIndeciesBufferMemory = VK_NULL_HANDLE;
 
-	VertexInputData mVertexInputData = {};
+	VertexInputData mVertexInputData{};
+	std::vector<uint32_t> mIndecies;
+
+	//Explicit padding for x86 since struct size is not divisable by 8 in x86
+	#if (defined(_M_IX86) || defined(__i386__))
+		uint8_t padding[4];
+	#endif
 };

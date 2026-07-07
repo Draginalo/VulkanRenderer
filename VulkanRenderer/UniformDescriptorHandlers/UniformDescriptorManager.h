@@ -76,4 +76,10 @@ private:
 
 	std::vector<VkBuffer> mMaterialDescriptorSSBOs;
 	std::vector<VkDeviceMemory> mMaterialDescriptorSSBOsMemory;
+
+	//Explicit padding for compiler warning (0 bits of padding EXCEPT for x86 release mode (when size of a vector 
+	// is only devisible by 4 and not divisable by 8))
+	#if ((defined(_M_IX86) || defined(__i386__)) && !defined(_DEBUG))
+		uint8_t padding[4] = {};
+	#endif
 };

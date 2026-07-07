@@ -38,7 +38,7 @@ VkShaderModule Pipeline::createShaderModule(VkDevice logicalDevice, const std::v
 	if (vkCreateShaderModule(logicalDevice, &shaderModuleCreateInfo, nullptr, &shaderModule) != VK_SUCCESS)
 	{
 		std::cout << "\nFailed to create shader module..." << std::endl;
-		return nullptr;
+		return VK_NULL_HANDLE;
 	}
 
 	return shaderModule;

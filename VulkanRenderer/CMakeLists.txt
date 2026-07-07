@@ -36,14 +36,25 @@ ${EXE_DIR}/Assets/)
 #Sets compiler warning settings
 if (MSVC)
     set(COMPILE_OPTIONS
-        "/Wall" # Enable warnings (level 4; use Wall for highest)
-        "/WX" # Warnings as errors
-        "/Zc:__cplusplus" # CPP predefined macro is version
-        "/Zc:preprocessor" # Preprocessor uses standard
-        "/external:W0"
-        "/external:anglebrackets"
-        "/wd5045"
-    )
+        $<$<CONFIG:Debug>:
+            "/Wall" # Enable warnings (level 4; use Wall for highest)
+            "/WX" # Warnings as errors
+            "/Zc:__cplusplus" # CPP predefined macro is version
+            "/Zc:preprocessor" # Preprocessor uses standard
+            "/external:W0"
+            "/external:anglebrackets"
+            "/wd5045">
+
+        $<$<CONFIG:Release>:
+            "/external:W0"
+            "/external:anglebrackets"
+            "/Wall" # Enable warnings (level 4; use Wall for highest)
+            "/WX" # Warnings as errors
+            "/Zc:__cplusplus" # CPP predefined macro is version
+            "/Zc:preprocessor" # Preprocessor uses standard
+            "/Zc:inline"
+            "/wd4711" "/wd4710" "/wd4738" "/wd5045">
+        )
 
     target_compile_options(VulkanRenderer PRIVATE
         "${COMPILE_OPTIONS}"

@@ -32,6 +32,6 @@ private:
 
 	Transform mTranform;
 
-	//Padding for compiler warning
+	//Explicit padding for compiler warning
 	uint8_t padding[4] = {0,0,0,0};
 };

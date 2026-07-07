@@ -11,8 +11,10 @@ struct VertexInputData {
 	std::vector<VkVertexInputAttributeDescription> vertexInputAttributes;
 	VkVertexInputBindingDescription vertexInputBinding;
 
-	//Padding for compiler warning
-	uint8_t padding[4] = {};
+	//Explicit padding for x64 since struct size is not divisable by 8 in x64
+	#if defined(_WIN64) || defined(__x86_64__)
+		uint8_t padding[4];
+	#endif
 };
 
 //Empty struct to allow for polymophism when passing vertex data to a mesh. 
@@ -42,7 +44,7 @@ struct Particle2D {
 	glm::vec2 velocity = {};
 	glm::vec3 color = {}; //Need to correct for alignment when passing to shaders
 
-	//Padding for compiler warning
+	//Explicit padding for compiler warning and for passing data to shaders with the same alignment
 	uint8_t padding[4] = {};
 
 	static VertexInputData getParticleInputData();

@@ -409,7 +409,6 @@ bool VulkanManager::drawFrame(GLFWwindow* window, float dt, bool* needToReloadGU
 		return false;
 	}
 
-	//Only adds the compute shader wait semephore if actually rendering the particles which depend on the compute shader
 	std::vector<VkSemaphore> waitSemaphores = { mImageAvailableSemaphores[mCurrentFrame]};
 
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
@@ -463,7 +462,9 @@ bool VulkanManager::drawFrame(GLFWwindow* window, float dt, bool* needToReloadGU
 
 bool VulkanManager::createInstance()
 {
-	if (enableValidationLayers && !hasValidationLayerSupport())
+	//Saved as non const to avoid const expression compilation warning
+	bool validationLayersEnabled = enableValidationLayers;
+	if (validationLayersEnabled && !hasValidationLayerSupport())
 	{
 		std::cout << "Validation layers requested but are not avalable..." << std::endl;
 		return false;
@@ -587,7 +588,7 @@ void VulkanManager::populateDebugMessangerInfo(VkDebugUtilsMessengerCreateInfoEX
 VkResult VulkanManager::CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAlloator, VkDebugUtilsMessengerEXT* pDebugMessenger)
 {
 	//Makes function pointer to the create debug utils messenger function
-	VkResult(*func)(VkInstance, const VkDebugUtilsMessengerCreateInfoEXT*,
+	VkResult(__stdcall *func)(VkInstance, const VkDebugUtilsMessengerCreateInfoEXT*,
 		const VkAllocationCallbacks*, VkDebugUtilsMessengerEXT*) =
 		reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(reinterpret_cast<VkResult(*)>(
 			vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT")));
@@ -603,8 +604,9 @@ VkResult VulkanManager::CreateDebugUtilsMessengerEXT(VkInstance instance, const 
 
 void VulkanManager::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
 {
-	void (*func)(VkInstance, VkDebugUtilsMessengerEXT,
-		const VkAllocationCallbacks*) = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+	void (__stdcall *func)(VkInstance, VkDebugUtilsMessengerEXT,
+		const VkAllocationCallbacks*) = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(reinterpret_cast<void(*)>(
+			vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT")));
 
 	if (func != nullptr) {
 		func(instance, debugMessenger, pAllocator);
@@ -613,9 +615,12 @@ void VulkanManager::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUt
 
 void VulkanManager::registerExtensionFunctions(VkInstance instance)
 {
-	fpCmdBeginRenderingKHR = (PFN_vkCmdBeginRenderingKHR)vkGetInstanceProcAddr(instance, "vkCmdBeginRenderingKHR");
-	fpCmdEndRenderingKHR = (PFN_vkCmdEndRenderingKHR)vkGetInstanceProcAddr(instance, "vkCmdEndRenderingKHR");
-	fpCmdPipelineBarrier2 = (PFN_vkCmdPipelineBarrier2KHR)vkGetInstanceProcAddr(instance, "vkCmdPipelineBarrier2KHR");
+	fpCmdBeginRenderingKHR = reinterpret_cast<PFN_vkCmdBeginRenderingKHR>(reinterpret_cast<void(*)>(
+		vkGetInstanceProcAddr(instance, "vkCmdBeginRenderingKHR")));
+	fpCmdEndRenderingKHR = reinterpret_cast<PFN_vkCmdEndRenderingKHR>(reinterpret_cast<void(*)>(
+		vkGetInstanceProcAddr(instance, "vkCmdEndRenderingKHR")));
+	fpCmdPipelineBarrier2 = reinterpret_cast<PFN_vkCmdPipelineBarrier2KHR>(reinterpret_cast<void(*)>(
+		vkGetInstanceProcAddr(instance, "vkCmdPipelineBarrier2KHR")));
 }
 
 bool VulkanManager::pickPhysicalDevice()
@@ -1372,11 +1377,11 @@ void VulkanManager::updateGUI()
 
 	ImGui::Begin("DEBUG");
 
-	if (ImGui::BeginCombo("Select Scene", mSelectedScene.name.c_str()))
+	if (ImGui::BeginCombo("Select Scene", mSelectedScene.name))
 	{
 		for (SceneData scene : mScenes)
 		{
-			if (ImGui::Selectable(scene.name.c_str(), &scene.selected))
+			if (ImGui::Selectable(scene.name, &scene.selected))
 			{
 				mSelectedScene = scene;
 				mSwapScenesTriggered = true;
