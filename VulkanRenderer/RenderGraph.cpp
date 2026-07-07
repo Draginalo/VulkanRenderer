@@ -29,6 +29,7 @@ void RenderGraph::handleAddPipelineToOrderedList(Pipeline* pipelineToAdd)
 	}
 
 	mActivePipelines_Ordered.insert(mActivePipelines_Ordered.begin() + lastPipelineThatDependsOn, pipelineToAdd);
+	(void)lastPipelineToDependOn; //To be used
 }
 
 void RenderGraph::addDrawableToRenderTree(DrawableData drawableDataToAdd)

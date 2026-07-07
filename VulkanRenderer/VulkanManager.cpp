@@ -371,7 +371,7 @@ bool VulkanManager::drawFrame(GLFWwindow* window, float dt, bool* needToReloadGU
 		handleInjectPipelineMemoryBarriers(mCommandBuffers[mCurrentFrame], pipelineToRender);
 
 		//Loops through all active materials being used by game objects in active scene
-		for (const std::pair<const Material*, std::vector<const Drawable*>>& materialsToRender :
+		for (std::pair<const Material*, std::vector<const Drawable*>> materialsToRender :
 			mActiveRenderGraph.getRenderTree()[pipelineToRender])
 		{
 			const Material* material = materialsToRender.first == nullptr ? pipelineToRender->getBaseMaterial() :
@@ -1301,11 +1301,6 @@ bool VulkanManager::createSyncObjects()
 void VulkanManager::renderGUI_DynamicRender(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
 	updateGUI();
-
-	VkCommandBufferBeginInfo beginCommandBuffInfo{};
-	beginCommandBuffInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginCommandBuffInfo.flags = 0;
-	beginCommandBuffInfo.pInheritanceInfo = nullptr;
 
 	VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
 	VkRenderingAttachmentInfoKHR colorAttachmentInfo{};

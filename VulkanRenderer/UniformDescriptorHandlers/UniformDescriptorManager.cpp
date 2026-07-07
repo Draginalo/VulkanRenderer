@@ -109,7 +109,7 @@ bool UniformDescriptorManager::createDescriptorPool(VkDevice logicalDevice, std:
 		maxSets += static_cast<uint32_t>(pipeline->getPipelineMaterials()->size() + 1);
 	}
 
-	for (const std::pair<VkDescriptorType, uint32_t>& descriptorCount : bufferTypeCountTracker)
+	for (std::pair<VkDescriptorType, uint32_t> descriptorCount : bufferTypeCountTracker)
 	{
 		poolSizes.push_back({ descriptorCount.first, descriptorCount.second * maxFramesInFlight });
 	}

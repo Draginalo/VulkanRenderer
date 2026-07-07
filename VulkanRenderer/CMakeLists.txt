@@ -41,7 +41,6 @@ else()
             ${EXE_DIR}/Assets/)
 endif()
 
-
 #Sets compiler warning settings
 if (MSVC)
     message(STATUS "SETTING UP COMPILER CONFIGS FOR MSVC")
@@ -71,6 +70,16 @@ if (MSVC)
         "${COMPILE_OPTIONS}"
     )
 endif()
+
+if(DEFINED ENV{CLION_IDE})
+    message(STATUS "SETTING UP COMPILER CONFIGS FOR CLION")
+    target_compile_options(VulkanRenderer PRIVATE
+            "-Wall" # Enable warnings (level 4; use Wall for highest)
+            "-Werror" # Warnings as errors
+            "-external:W0"
+            "-external:anglebrackets"
+            "$<$<CXX_COMPILER_ID:MSVC>:/wd5054>")
+endif ()
 
 target_include_directories(VulkanRenderer PRIVATE "${PROJECT_SOURCE_DIR}")
 

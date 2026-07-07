@@ -93,6 +93,7 @@ bool GraphicsPipeline::createPipeline(VkDevice logicalDevice, VkExtent2D viewpor
 	viewport.height = (float)viewportExtent.height;
 	viewport.minDepth = 0.0;
 	viewport.maxDepth = 1.0;
+	(void)viewport; //To be used
 
 	VkRect2D scissorRect{};
 	scissorRect.offset = { 0, 0 };
