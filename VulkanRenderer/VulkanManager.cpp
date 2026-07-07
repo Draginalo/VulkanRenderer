@@ -5,8 +5,6 @@
 
 #include <random>
 
-VulkanManager::VulkanManager() {}
-
 bool VulkanManager::initVulkan(GLFWwindow* window)
 {
 	std::cout << "\nInitializing Vulkan" << std::endl;
@@ -122,12 +120,12 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 
 	//Adds all the created scenes to a vector of all the scenes to be created
 	std::vector<Pipeline*> allPipelines;
-	for (uint32_t i = 0; i < mGraphicsPipelineStorageList.size(); i++)
+	for (size_t i = 0; i < mGraphicsPipelineStorageList.size(); i++)
 	{
 		allPipelines.push_back(&mGraphicsPipelineStorageList[i]);
 	}
 
-	for (uint32_t i = 0; i < mComputePipelineStorageList.size(); i++)
+	for (size_t i = 0; i < mComputePipelineStorageList.size(); i++)
 	{
 		allPipelines.push_back(&mComputePipelineStorageList[i]);
 	}
@@ -149,8 +147,8 @@ bool VulkanManager::initVulkan(GLFWwindow* window)
 	configValues.targetMSAA_Image = &mMSAA_ColorImage;
 	configValues.targetMSAA_ImageView = &mMSAA_ColorImageView;
 
-	char* vertShader = "Assets/Shaders/ByteEncoded/RenderModel_VS.spv";
-	char* fragShader = "Assets/Shaders/ByteEncoded/RenderModel_FS.spv";
+	const char* vertShader = "Assets/Shaders/ByteEncoded/RenderModel_VS.spv";
+	const char* fragShader = "Assets/Shaders/ByteEncoded/RenderModel_FS.spv";
 
 	VertexInputData vertexInputInfo = mHouseMesh.getVertexInputData();
 
@@ -247,7 +245,7 @@ bool VulkanManager::cleanupVulkan()
 
 	size_t numSwapChainImages = mSwapChainImages.size();
 
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
 		vkDestroySemaphore(mLogicalDevice, mImageAvailableSemaphores[i], nullptr);
 		vkDestroyFence(mLogicalDevice, mWhileRenderingFences[i], nullptr);
@@ -1081,7 +1079,7 @@ bool VulkanManager::createSwapChainImageViews()
 	size_t imageCount = mSwapChainImages.size();
 	mSwapChainImageViews.resize(imageCount);
 
-	for (uint32_t i = 0; i < imageCount; i++)
+	for (size_t i = 0; i < imageCount; i++)
 	{
 		if (!createImageView(mLogicalDevice, mSwapChainImages[i], &mSwapChainImageViews[i], mSwapChainImageFormat, 
 			VK_IMAGE_ASPECT_COLOR_BIT, 1))
@@ -1210,8 +1208,8 @@ void VulkanManager::handlePipelineChanges(bool* needToReloadGUI_Flag)
 		configValues.targetMSAA_Image = &mMSAA_ColorImage;
 		configValues.targetMSAA_ImageView = &mMSAA_ColorImageView;
 
-		char* vertShader = "Assets/Shaders/ByteEncoded/RenderModel_VS.spv";
-		char* fragShader = "Assets/Shaders/ByteEncoded/RenderModel_FS.spv";
+		const char* vertShader = "Assets/Shaders/ByteEncoded/RenderModel_VS.spv";
+		const char* fragShader = "Assets/Shaders/ByteEncoded/RenderModel_FS.spv";
 
 		VertexInputData vertexInputInfo = mHouseMesh.getVertexInputData();
 
@@ -1276,7 +1274,7 @@ bool VulkanManager::createSyncObjects()
 	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; //Makes it so first drawFrame does not block
 
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
 		if (vkCreateSemaphore(mLogicalDevice, &semaphoreCreateInfo, nullptr, &mImageAvailableSemaphores[i]) != VK_SUCCESS
 			|| vkCreateFence(mLogicalDevice, &fenceCreateInfo, nullptr, &mWhileRenderingFences[i]) != VK_SUCCESS)

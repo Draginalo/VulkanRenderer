@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vulkan/vulkan.h"
+#include <vulkan/vulkan.h>
 #include <iostream>
 
 enum DescriptorLevel {
@@ -26,13 +26,13 @@ public:
 
 	virtual inline VkWriteDescriptorSet getWriteDescriptorSet(VkDescriptorSet destSet) = 0;
 
-	virtual inline void setDstBinding(uint32_t binding);
-	virtual inline uint32_t getDstBinding() const;
-	virtual inline void setStageFlags(VkShaderStageFlagBits stageFlags);
-	virtual inline VkShaderStageFlagBits getStageFlags() const;
-	virtual inline void setUniformType(VkDescriptorType uniformType);
-	virtual inline VkDescriptorType getUniformType() const;
-	virtual inline DescriptorLevel getDescriptorLevel() const;
+	virtual void setDstBinding(uint32_t binding);
+	virtual uint32_t getDstBinding() const;
+	virtual void setStageFlags(VkShaderStageFlagBits stageFlags);
+	virtual VkShaderStageFlagBits getStageFlags() const;
+	virtual void setUniformType(VkDescriptorType uniformType);
+	virtual VkDescriptorType getUniformType() const;
+	virtual DescriptorLevel getDescriptorLevel() const;
 
 	bool operator==(const UniformDescriptor& other);
 protected:

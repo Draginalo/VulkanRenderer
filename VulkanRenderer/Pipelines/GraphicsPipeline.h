@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vulkan/vulkan.h"
+#include <vulkan/vulkan.h>
 #include "Pipeline.h"
 #include "VulkanRenderer/Mesh/MeshGeneric.h"
 
@@ -28,7 +28,10 @@ struct ConfigurablePipelineValues {
 
 class GraphicsPipeline : public Pipeline {
 public:
-	~GraphicsPipeline() {}
+	GraphicsPipeline() = default;
+	GraphicsPipeline(const GraphicsPipeline&) = default;
+	~GraphicsPipeline() = default;
+	GraphicsPipeline& operator=(const GraphicsPipeline& other) = default;
 
 	bool createPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat, 
 		VkFormat depthAttachmentFormat, ConfigurablePipelineValues configValues,

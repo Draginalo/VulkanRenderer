@@ -6,7 +6,7 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
-#include "vulkan/vulkan.h"
+#include <vulkan/vulkan.h>
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
@@ -59,7 +59,7 @@ enum Scene
 
 struct SceneData 
 {
-	char* name = "";
+	const char* name = "";
 	std::vector<DrawableData> sceneGameObjects = {};
 	Scene sceneType = {};
 	bool selected = false;
@@ -102,7 +102,7 @@ public:
 	VkQueue getGraphicsQueue() const;
 
 	//Explicit class defenitions to avoid compiler warnings
-	VulkanManager();
+	VulkanManager() = default;
 	VulkanManager(const VulkanManager&) = default;
 	VulkanManager& operator=(VulkanManager&& other) = delete;
 	VulkanManager& operator=(const VulkanManager& other) = delete;

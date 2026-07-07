@@ -1,7 +1,7 @@
 #pragma once
 
 #include <iostream>
-#include "vulkan/vulkan.h"
+#include <vulkan/vulkan.h>
 
 bool createTextureImage(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkImage& textureImage, 
 	VkDeviceMemory& textureImageMemory, VkCommandPool commandPool, VkQueue submitQueue, const char* imageFilename, 

@@ -8,7 +8,7 @@ void UniformDescriptorManager::createPipelineSpecificDescriptorSets(std::vector<
 	VkDeviceSize totalUniformBuffersSize = 0;
 	VkDeviceSize totalStorageBuffersSize = 0;
 
-	for (uint32_t i = 0; i < numSets; i++)
+	for (size_t i = 0; i < numSets; i++)
 	{
 		pipelines[i]->createPipelineDescriptorSetLayout(logicalDevice);
 		pipelines[i]->createBaseMaterialDescriptorSetLayout(logicalDevice);
@@ -26,7 +26,7 @@ void UniformDescriptorManager::createPipelineSpecificDescriptorSets(std::vector<
 	uniformBufferData.buffers = mPipelineUniformBuffers;
 	storageBufferData.buffers = mPipelineDescriptorSSBOs;
 
-	for (uint32_t i = 0; i < numSets; i++)
+	for (size_t i = 0; i < numSets; i++)
 	{
 		pipelines[i]->createPipelineDescriptorSetData(logicalDevice, mDescriptorPool, &uniformBufferData, &storageBufferData, 
 			maxFramesInFlight);
@@ -214,7 +214,7 @@ bool UniformDescriptorManager::addDataToSSBOs(VkDevice logicalDevice, void* pDat
 
 	size_t numBuffers = mPipelineDescriptorSSBOsMemory.size();
 
-	for (uint32_t i = 0; i < numBuffers; i++)
+	for (size_t i = 0; i < numBuffers; i++)
 	{
 		void* bufferDataPointer;
 		vkMapMemory(logicalDevice, mPipelineDescriptorSSBOsMemory[i], pDescriptorData->getOffset(), pDescriptorData->getDataSize(), 0, &bufferDataPointer);

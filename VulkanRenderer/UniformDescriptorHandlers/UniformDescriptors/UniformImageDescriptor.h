@@ -8,8 +8,10 @@ public:
 	UniformImageDescriptor(DescriptorLevel descriptorLevel = GLOBAL, uint32_t dstBinding = 0, 
 		VkShaderStageFlagBits stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
 		VkDescriptorType uniformType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VkDescriptorImageInfo imageInfo = {});
+	UniformImageDescriptor(const UniformImageDescriptor&) = default;
+	UniformImageDescriptor& operator=(const UniformImageDescriptor& other) = default;
 
-	~UniformImageDescriptor() {}
+	~UniformImageDescriptor() = default;
 
 	void setImageInfo(VkDescriptorImageInfo imageInfo);
 

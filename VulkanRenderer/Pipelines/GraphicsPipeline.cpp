@@ -310,7 +310,7 @@ bool GraphicsPipeline::createFramebuffers(VkDevice logicalDevice, std::vector<Vk
 
 	mFramebuffers.resize(imageViewCount);
 
-	for (uint32_t i = 0; i < imageViewCount; i++)
+	for (size_t i = 0; i < imageViewCount; i++)
 	{
 		std::array<VkImageView, 3> attatchments = { msaaImageView, depthImageView, imageViews[i] };
 

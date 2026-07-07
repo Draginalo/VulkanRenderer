@@ -1,8 +1,9 @@
 #include "ModelHelpers.h"
 
+#include <unordered_map>
+
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
-#include <unordered_map>
 
 bool loadModel(const char* filepath, std::vector<Vertex3D>* vertices, std::vector<uint32_t>* indecies)
 {

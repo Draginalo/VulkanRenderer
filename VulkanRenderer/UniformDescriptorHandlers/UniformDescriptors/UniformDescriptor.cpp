@@ -5,13 +5,13 @@ UniformDescriptor::UniformDescriptor(DescriptorLevel descriptorLevel, uint32_t d
 	mDescriptorLevel(descriptorLevel) {}
 
 //Inline one liners
-inline void UniformDescriptor::setDstBinding(uint32_t binding) { mDstBinding = binding; }
-inline uint32_t UniformDescriptor::getDstBinding() const { return mDstBinding; }
-inline void UniformDescriptor::setStageFlags(VkShaderStageFlagBits stageFlags) { mStageFlags = stageFlags; }
-inline VkShaderStageFlagBits UniformDescriptor::getStageFlags() const { return mStageFlags; }
-inline void UniformDescriptor::setUniformType(VkDescriptorType uniformType) { mUniformType = uniformType; }
-inline VkDescriptorType UniformDescriptor::getUniformType() const { return mUniformType; }
-inline DescriptorLevel UniformDescriptor::getDescriptorLevel() const { return mDescriptorLevel; }
+void UniformDescriptor::setDstBinding(uint32_t binding) { mDstBinding = binding; }
+uint32_t UniformDescriptor::getDstBinding() const { return mDstBinding; }
+void UniformDescriptor::setStageFlags(VkShaderStageFlagBits stageFlags) { mStageFlags = stageFlags; }
+VkShaderStageFlagBits UniformDescriptor::getStageFlags() const { return mStageFlags; }
+void UniformDescriptor::setUniformType(VkDescriptorType uniformType) { mUniformType = uniformType; }
+VkDescriptorType UniformDescriptor::getUniformType() const { return mUniformType; }
+DescriptorLevel UniformDescriptor::getDescriptorLevel() const { return mDescriptorLevel; }
 
 bool UniformDescriptor::operator==(const UniformDescriptor& other)
 { return other.mDstBinding == mDstBinding && other.mStageFlags == mStageFlags && other.mUniformType == mUniformType; }

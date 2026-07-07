@@ -22,19 +22,30 @@ include(${PROJECT_SOURCE_DIR}/externals/compileBytecodeShaders.cmake)
 # Builds the executable with all the header and source files in this directory
 add_executable(VulkanRenderer ${VULKAN_RENDERER_SRC} ${VULKAN_RENDERER_INC})
 
-#Gets build exe output directory
-set(EXE_DIR "$<TARGET_FILE_DIR:VulkanRenderer>")
+if(DEFINED ENV{CLION_IDE})
+    #Gets build exe output directory with clion
+    set(EXE_DIR "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+    add_custom_command(TARGET VulkanRenderer POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${PROJECT_SOURCE_DIR}/Assets
+            ${EXE_DIR}/Assets)
+else()
+    #Gets build exe output directory
+    set(EXE_DIR "$<TARGET_FILE_DIR:VulkanRenderer>")
 
-#Sets the working directory to the output exe dir
-set_property(TARGET VulkanRenderer PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${EXE_DIR}")
+    #Sets the working directory to the output exe dir
+    set_property(TARGET VulkanRenderer PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${EXE_DIR}")
+    #Copies assets to exe output dir
+    add_custom_target(copyAssetsFP ALL COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${PROJECT_SOURCE_DIR}/Assets/
+            ${EXE_DIR}/Assets/)
+endif()
 
-#Copies assets to exe output dir
-add_custom_target(copyAssetsFP ALL COMMAND ${CMAKE_COMMAND} -E copy_directory
-${PROJECT_SOURCE_DIR}/Assets/
-${EXE_DIR}/Assets/)
 
 #Sets compiler warning settings
 if (MSVC)
+    message(STATUS "SETTING UP COMPILER CONFIGS FOR MSVC")
+
     set(COMPILE_OPTIONS
         $<$<CONFIG:Debug>:
             "/Wall" # Enable warnings (level 4; use Wall for highest)
@@ -46,10 +57,10 @@ if (MSVC)
             "/wd5045">
 
         $<$<CONFIG:Release>:
-            "/external:W0"
-            "/external:anglebrackets"
             "/Wall" # Enable warnings (level 4; use Wall for highest)
             "/WX" # Warnings as errors
+            "/external:W0"
+            "/external:anglebrackets"
             "/Zc:__cplusplus" # CPP predefined macro is version
             "/Zc:preprocessor" # Preprocessor uses standard
             "/Zc:inline"

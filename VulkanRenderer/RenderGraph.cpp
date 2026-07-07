@@ -8,7 +8,7 @@ void RenderGraph::handleAddPipelineToOrderedList(Pipeline* pipelineToAdd)
 
 	handleRegisterPipelineDependencyData(pipelineToAdd);
 
-	for (uint32_t i = 0; i < pipelineCount; i++)
+	for (size_t i = 0; i < pipelineCount; i++)
 	{
 		//TODO: Add automatic detection of pipeline dependency here and setting of memory barrier for pipeline here
 		if (pipelineToAdd->getPipelineDependencyInfo()->dependsOnPipeline == mActivePipelines_Ordered[i])
