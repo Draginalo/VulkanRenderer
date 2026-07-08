@@ -1,6 +1,6 @@
-#include "TextureImageHelpers.h"
+#include "TextureImageHelpers.hpp"
 
-#include "BufferHelpers.h"
+#include "BufferHelpers.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>

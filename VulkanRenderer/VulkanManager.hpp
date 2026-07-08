@@ -19,15 +19,15 @@
 #include <algorithm>
 #include <string>
 
-#include "Pipelines/GraphicsPipeline.h"
-#include "Pipelines/ComputePipeline.h"
-#include "Mesh/Mesh3D.h"
-#include "Mesh/BufferDrawer.h"
-#include "UniformDescriptorHandlers/UniformDescriptorManager.h"
-#include "UniformDescriptorHandlers/UniformDescriptors/UniformBufferDescriptor.h"
-#include "UniformDescriptorHandlers/UniformDescriptors/UniformImageDescriptor.h"
-#include "GameObject.h"
-#include "RenderGraph.h"
+#include "Pipelines/GraphicsPipeline.hpp"
+#include "Pipelines/ComputePipeline.hpp"
+#include "Mesh/Mesh3D.hpp"
+#include "Mesh/BufferDrawer.hpp"
+#include "UniformDescriptorHandlers/UniformDescriptorManager.hpp"
+#include "UniformDescriptorHandlers/UniformDescriptors/UniformBufferDescriptor.hpp"
+#include "UniformDescriptorHandlers/UniformDescriptors/UniformImageDescriptor.hpp"
+#include "GameObject.hpp"
+#include "RenderGraph.hpp"
 
 #ifdef NDEBUG
 	const bool enableValidationLayers = false;

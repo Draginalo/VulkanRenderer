@@ -2,7 +2,7 @@
 
 #include <vulkan/vulkan.h>
 #include <glfw/glfw3.h>
-#include "VulkanRenderer/VulkanManager.h"
+#include "VulkanRenderer/VulkanManager.hpp"
 
 class GUIHandler {
 public:

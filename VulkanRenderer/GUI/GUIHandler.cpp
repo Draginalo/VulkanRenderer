@@ -1,4 +1,4 @@
-#include "GUIHandler.h"
+#include "GUIHandler.hpp"
 
 void GUIHandler::initImGui(GLFWwindow* window, VulkanManager* vulkanManager)
 {

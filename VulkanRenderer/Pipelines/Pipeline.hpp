@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include "VulkanRenderer/UniformDescriptorHandlers/DescriptorSetData.h"
+#include "VulkanRenderer/UniformDescriptorHandlers/DescriptorSetData.hpp"
 
 #include <algorithm>
 #include <array>
@@ -11,7 +11,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include "VulkanRenderer/Mesh/Drawable.h"
+#include "VulkanRenderer/Mesh/Drawable.hpp"
 
 class Pipeline;
 

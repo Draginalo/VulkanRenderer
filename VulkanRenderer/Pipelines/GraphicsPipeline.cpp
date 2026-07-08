@@ -1,6 +1,6 @@
-#include "GraphicsPipeline.h"
-#include "VulkanRenderer/UniformDescriptorHandlers/UniformDescriptorManager.h"
-#include "VulkanRenderer/Helpers/TextureImageHelpers.h"
+#include "GraphicsPipeline.hpp"
+#include "VulkanRenderer/UniformDescriptorHandlers/UniformDescriptorManager.hpp"
+#include "VulkanRenderer/Helpers/TextureImageHelpers.hpp"
 
 bool GraphicsPipeline::createPipeline(VkDevice logicalDevice, VkExtent2D viewportExtent, VkFormat colorAttachmentFormat,
 	VkFormat depthAttachmentFormat, ConfigurablePipelineValues configValues,

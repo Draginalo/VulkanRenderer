@@ -1,4 +1,4 @@
-#include "UniformBufferDescriptor.h"
+#include "UniformBufferDescriptor.hpp"
 
 UniformBufferDescriptor::UniformBufferDescriptor(DescriptorLevel descriptorLevel, uint32_t dstBinding, 
 	VkShaderStageFlagBits stageFlags, VkDescriptorType uniformType, uint32_t dataSize, void* dataPointer, 

@@ -1,4 +1,4 @@
-#include "Pipeline.h"
+#include "Pipeline.hpp"
 
 uint32_t Pipeline::mNumPipelineInstances = 0;
 

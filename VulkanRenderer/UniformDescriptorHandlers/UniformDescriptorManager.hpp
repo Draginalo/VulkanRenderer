@@ -12,9 +12,9 @@
 #include <array>
 #include <chrono>
 
-#include "VulkanRenderer/Helpers/VertexInputData.h"
-#include "DescriptorSetData.h"
-#include "VulkanRenderer/Pipelines/Pipeline.h"
+#include "VulkanRenderer/Helpers/VertexInputData.hpp"
+#include "DescriptorSetData.hpp"
+#include "VulkanRenderer/Pipelines/Pipeline.hpp"
 
 //Uniform buffer struct for mvp matrecies with explicit alignment specefied to match shader uniform alignment
 // Could also use #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES but does not always catch alignment for nested structs

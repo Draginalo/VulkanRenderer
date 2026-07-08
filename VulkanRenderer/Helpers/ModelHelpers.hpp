@@ -3,6 +3,6 @@
 #include <vector>
 #include <iostream>
 
-#include "VulkanRenderer/Helpers/VertexInputData.h"
+#include "VulkanRenderer/Helpers/VertexInputData.hpp"
 
 bool loadModel(const char* filepath, std::vector<Vertex3D>* vertices, std::vector<uint32_t>* indecies);

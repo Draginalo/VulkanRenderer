@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Pipelines/Pipeline.h"
-#include "Mesh/Drawable.h"
+#include "Pipelines/Pipeline.hpp"
+#include "Mesh/Drawable.hpp"
 #include <unordered_map>
 #include <vector>
-#include "GameObject.h"
+#include "GameObject.hpp"
 
 struct DrawableData {
 	const Drawable* drawable;

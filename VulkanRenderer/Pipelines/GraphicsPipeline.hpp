@@ -1,8 +1,8 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include "Pipeline.h"
-#include "VulkanRenderer/Mesh/MeshGeneric.h"
+#include "Pipeline.hpp"
+#include "VulkanRenderer/Mesh/MeshGeneric.hpp"
 
 #include <iostream>
 #include <fstream>

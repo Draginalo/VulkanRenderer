@@ -1,4 +1,4 @@
-#include "BufferDrawer.h"
+#include "BufferDrawer.hpp"
 
 void BufferDrawer::draw(VkCommandBuffer commandBuffer, uint32_t currFrame) const
 {

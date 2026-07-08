@@ -1,8 +1,8 @@
-﻿#include "VulkanManager.h"
-#include "Helpers/BufferHelpers.h"
-#include "UniformDescriptorHandlers//UniformDescriptors/UniformBufferDescriptor.h"
-#include "UniformDescriptorHandlers/UniformDescriptors/UniformImageDescriptor.h"
-#include "Helpers/TextureImageHelpers.h"
+﻿#include "VulkanManager.hpp"
+#include "Helpers/BufferHelpers.hpp"
+#include "UniformDescriptorHandlers//UniformDescriptors/UniformBufferDescriptor.hpp"
+#include "UniformDescriptorHandlers/UniformDescriptors/UniformImageDescriptor.hpp"
+#include "Helpers/TextureImageHelpers.hpp"
 
 #include <random>
 

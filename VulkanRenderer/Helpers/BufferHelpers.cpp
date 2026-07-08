@@ -1,4 +1,4 @@
-#include "BufferHelpers.h"
+#include "BufferHelpers.hpp"
 
 bool createBuffer(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkDeviceSize size,
 	VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)

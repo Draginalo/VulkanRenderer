@@ -1,4 +1,4 @@
-#include "UniformDescriptor.h"
+#include "UniformDescriptor.hpp"
 
 UniformDescriptor::UniformDescriptor(DescriptorLevel descriptorLevel, uint32_t dstBinding, VkShaderStageFlagBits stageFlags, 
 	VkDescriptorType uniformType) : mDstBinding(dstBinding), mStageFlags(stageFlags), mUniformType(uniformType), 

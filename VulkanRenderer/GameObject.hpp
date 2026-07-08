@@ -3,9 +3,9 @@
 #include <vulkan/vulkan.h>
 #include <glm/glm.hpp>
 
-#include "Pipelines/GraphicsPipeline.h"
-#include "Mesh/Mesh3D.h"
-#include "UniformDescriptorHandlers/UniformDescriptorManager.h"
+#include "Pipelines/GraphicsPipeline.hpp"
+#include "Mesh/Mesh3D.hpp"
+#include "UniformDescriptorHandlers/UniformDescriptorManager.hpp"
 
 struct Transform {
 	glm::vec3 position = { 0.0, 0.0, 0.0 };

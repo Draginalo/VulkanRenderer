@@ -1,6 +1,6 @@
 #pragma once
 
-#include "UniformDescriptor.h"
+#include "UniformDescriptor.hpp"
 #include <iostream>
 
 class UniformImageDescriptor : public UniformDescriptor {

@@ -1,6 +1,6 @@
-#include "VulkanManager.h"
-#include "WindowManager.h"
-#include "GUI/GUIHandler.h"
+#include "VulkanManager.hpp"
+#include "WindowManager.hpp"
+#include "GUI/GUIHandler.hpp"
 
 #include <iostream>
 

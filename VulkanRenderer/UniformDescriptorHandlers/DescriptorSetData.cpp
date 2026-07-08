@@ -1,4 +1,4 @@
-#include "DescriptorSetData.h"
+#include "DescriptorSetData.hpp"
 
 void DescriptorSetData::loadDescriptors(std::vector<UniformBufferDescriptor> uniformBufferDescriptors, 
 	std::vector<UniformImageDescriptor> uniformImageDescriptors)

@@ -1,4 +1,4 @@
-#include "ComputePipeline.h"
+#include "ComputePipeline.hpp"
 
 ComputePipeline::ComputePipeline() : Pipeline(true) {}
 

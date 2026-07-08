@@ -1,5 +1,5 @@
-#include "UniformDescriptorManager.h"
-#include "VulkanRenderer/Helpers/BufferHelpers.h"
+#include "UniformDescriptorManager.hpp"
+#include "VulkanRenderer/Helpers/BufferHelpers.hpp"
 
 void UniformDescriptorManager::createPipelineSpecificDescriptorSets(std::vector<Pipeline*> pipelines, VkDevice logicalDevice,
 	VkPhysicalDevice physicalDevice, uint32_t maxFramesInFlight)

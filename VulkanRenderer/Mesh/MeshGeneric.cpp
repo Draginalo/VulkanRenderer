@@ -1,6 +1,6 @@
-#include "MeshGeneric.h"
-#include "VulkanRenderer/Helpers/BufferHelpers.h"
-#include "VulkanRenderer/Helpers/ModelHelpers.h"
+#include "MeshGeneric.hpp"
+#include "VulkanRenderer/Helpers/BufferHelpers.hpp"
+#include "VulkanRenderer/Helpers/ModelHelpers.hpp"
 
 bool MeshGeneric::createVertexBuffer(VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkCommandPool commandPool,
 	VkQueue submitQueue, const void* vertexData, VkDeviceSize vertexBufferSize, std::vector<uint32_t> indecies, 

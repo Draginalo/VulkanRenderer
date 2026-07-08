@@ -6,8 +6,8 @@
 #include <array>
 #include <iostream>
 
-#include "VulkanRenderer/Helpers/VertexInputData.h"
-#include "Drawable.h"
+#include "VulkanRenderer/Helpers/VertexInputData.hpp"
+#include "Drawable.hpp"
 
 class MeshGeneric : public Drawable {
 public:

@@ -1,4 +1,4 @@
-#include "VertexInputData.h"
+#include "VertexInputData.hpp"
 
 VertexInputData Vertex3D::getVertexInputData() {
 	VkVertexInputBindingDescription bindingDescription{};

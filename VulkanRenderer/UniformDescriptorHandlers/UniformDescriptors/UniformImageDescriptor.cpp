@@ -1,4 +1,4 @@
-#include "UniformImageDescriptor.h"
+#include "UniformImageDescriptor.hpp"
 
 UniformImageDescriptor::UniformImageDescriptor(DescriptorLevel descriptorLevel, uint32_t dstBinding,
 	VkShaderStageFlagBits stageFlags, VkDescriptorType uniformType, VkDescriptorImageInfo imageInfo) :

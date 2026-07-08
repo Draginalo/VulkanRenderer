@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MeshGeneric.h"
+#include "MeshGeneric.hpp"
 #include <vulkan/vulkan.h>
 
 //TODO: Make this mesh class inherit from a base class (where the derived classes load data differently, ex. one 
