@@ -24,7 +24,6 @@
 #include "Mesh/Mesh3D.h"
 #include "Mesh/BufferDrawer.h"
 #include "UniformDescriptorHandlers/UniformDescriptorManager.h"
-#include "Helpers/TextureImageHelpers.h"
 #include "UniformDescriptorHandlers/UniformDescriptors/UniformBufferDescriptor.h"
 #include "UniformDescriptorHandlers/UniformDescriptors/UniformImageDescriptor.h"
 #include "GameObject.h"

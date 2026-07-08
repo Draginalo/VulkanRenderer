@@ -2,6 +2,7 @@
 #include "Helpers/BufferHelpers.h"
 #include "UniformDescriptorHandlers//UniformDescriptors/UniformBufferDescriptor.h"
 #include "UniformDescriptorHandlers/UniformDescriptors/UniformImageDescriptor.h"
+#include "Helpers/TextureImageHelpers.h"
 
 #include <random>
 

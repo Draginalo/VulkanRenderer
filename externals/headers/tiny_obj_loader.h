@@ -963,7 +963,7 @@ namespace tinyobj {
         std::vector<real_t, real_alloc> colors;     // rgb (optional)
         std::vector<basic_skin_weight_t<Alloc>, skin_weight_alloc> skin_weights;
         std::vector<index_t, index_alloc> indices;  // face indices
-        std::vector<int, int_alloc> face_num_verts; // verts per face
+        std::vector<unsigned int, int_alloc> face_num_verts; // verts per face
         std::vector<int, int_alloc> material_ids;   // per-face material
     };
 
@@ -1249,7 +1249,7 @@ namespace tinyobj {
 
 #include <array>
 
-#include "mapbox/earcut.hpp"
+#include <mapbox/earcut.hpp>
 
 #ifdef __clang__
 #pragma clang diagnostic pop
